@@ -151,7 +151,7 @@ public class MiddlewareAppApplication {
 			case "middlewareApp/itr_upload":
 				url = liveURL+"/lead/itrupload/startupload";
 				break;
-			case "middlewareApp/bank_upload":
+			case "middlewareApp/stmt_upload":
 				url = liveURL+"/lead/statementupload/startupload";
 				break;
 			default:
