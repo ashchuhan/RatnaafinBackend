@@ -22,6 +22,7 @@ import java.net.URL;
 @Controller
 public class MiddlewareAppApplication {
 	private  String MID_KEY = "r6ENdp/FRIDHaJ1rE7doilf/SJ1sCQE0VcVa+nuN+QI="; //"Ratnaafin@Middleware";
+	//private  String liveURL = "https://ratnaafinapi.aiplservices.com/middleware";
 	private  String liveURL = "https://digix.aiplsolution.in/ratnaafin/middleware";
 	@Autowired
 	private UserService userService;
@@ -142,7 +143,6 @@ public class MiddlewareAppApplication {
 		String result = null;
 		String url 		= null;
 		System.out.println("MIDDLEWARE INITIATED...");
-
 		createJson = "{\"request_data\":{\"perfiosTransactionId\":"+transactionId+"},\"channel\":\"W\"}";
 		switch (module+"/"+action){
 			case "middlewareApp/gst_upload":
