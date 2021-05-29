@@ -1,0 +1,49 @@
+plugins {
+	id 'org.springframework.boot' version '2.3.3.RELEASE'
+	id 'io.spring.dependency-management' version '1.0.10.RELEASE'
+	id 'java'
+}
+
+group = 'com.ratnaafin'
+version = '0.0.1'
+sourceCompatibility = '1.8'
+
+repositories {
+	mavenCentral()
+	mavenLocal()
+}
+
+ext {
+	set('springCloudVersion', "Hoxton.SR8")
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.cloud:spring-cloud-starter-oauth2'
+	implementation 'org.json:json:20090211'
+	implementation 'com.microsoft.playwright:playwright:1.9.0-alpha-0'
+    //implementation 'junit:junit:4.12'
+    compile('com.oracle:ojdbc8:12.2.0.1')
+	testImplementation('org.springframework.boot:spring-boot-starter-test') {
+		exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+	}
+	testImplementation 'org.springframework.security:spring-security-test'
+	compile('org.springframework.boot:spring-boot-starter-web')
+	compile('org.springframework.boot:spring-boot-starter-mail')
+	// https://mvnrepository.com/artifact/org.apache.commons/commons-compress
+	compile group: 'org.apache.commons', name: 'commons-compress', version: '1.5'
+	//https://jar-download.com/artifacts/org.bouncycastle/bcprov-jdk16/1.38/source-code/org/bouncycastle/openssl/PEMReader.java
+	compile group: 'org.bouncycastle', name: 'bcprov-jdk16', version: '1.38'
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+	}
+}
+
+test {
+	useJUnitPlatform()
+}
