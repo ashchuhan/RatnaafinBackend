@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 
 @RestController
-@RequestMapping("/los/webhooks") //: /los/webhooks/gstInfoWebhook
+@RequestMapping("/los/webhooks") //: /los/webhooks/gstInfoWebhook //
 @Controller
 public class AdminController {
 	private String g_error_msg = "Something went wrong please try again.";
