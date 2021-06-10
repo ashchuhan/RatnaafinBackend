@@ -153,7 +153,7 @@ public class Scheduler {
             } catch (SQLException ex5) {
             }
         }
-        return ls_return;
+        return ls_return;//hell
     }
     /*
     public String funcGenerateCAM(long leadID,long serialNo,long enteredBy) {
