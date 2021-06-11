@@ -181,10 +181,10 @@ public class RatnaafinApplication {
 				break;
 			case "external/otp/mobile/send":
 			case "external/equifax-otp/mobile/send":
-				result = funcTokenBasedMobileOTPRequest(application, module, action, event, requestData, userName);
+				result = funcTokenBasedMobileOTPRequest_v2(application, module, action, event, requestData, userName);
 				break;
 			case "external/equifax-otp/mobile/resend":
-				result = funcTokenBasedOTPRequestResend(application, module, action, event, requestData, userName);
+				result = funcTokenBasedOTPRequestResend_v2(application, module, action, event, requestData, userName);
 				break;
 			case "external/otp/email/verify":
 				result = funcTokenBasedEmailOTPVerify(application, module, action, event, requestData, userName);
@@ -192,7 +192,7 @@ public class RatnaafinApplication {
 			case "external/otp/mobile/verify":
 			case "external/equifax-otp/mobile/verify":
 			case "external/equifax-otp/mobile/re-verify":
-				result = funcTokenBasedMobileOTPVerify(application, module, action, event, requestData, userName);
+				result = funcTokenBasedMobileOTPVerify_v2(application, module, action, event, requestData, userName);
 				break;
 			case "external/equifax/request/send":
 				result = funcVerifyEquifaxToken(application,module,"token","verify",requestData,userName);
@@ -2909,6 +2909,251 @@ public class RatnaafinApplication {
 			return userService.getJsonError("-99", "Error-Exception", g_error_msg, e.getMessage(), "99", channel, action, requestData, userName, module, "E");
 		}
 	}
+	//1.3 OTP SMS for mobile verification and equifax credit score(Retail/commercial) (v02.0)
+	public String funcTokenBasedMobileOTPRequest_v2(String module,String moduleCategory, String action,String event,String requestData,String userName) {
+		String channel = null, mobile = null, email = null, requestType = null, dbResult = null,response=null,
+				transactionID=null,tokenID = null,equifaxOTP = "N",devOTP=null, entityType=null;
+		SysParaMst sysParaMst_devOTP = userService.getParaVal("9999","9999",17);
+		if(sysParaMst_devOTP==null){
+			devOTP = "N";
+		}else{
+			devOTP = sysParaMst_devOTP.getPara_value();
+			devOTP = devOTP==null ? "N" : devOTP;
+		}
+		if(moduleCategory.equalsIgnoreCase("equifax-otp")){
+			equifaxOTP = "Y";
+			requestType = "EQFX_SMS";
+		}else{
+			requestType = "SMS";
+		}
+
+		HashMap inParam = new HashMap(), outParam;
+		module = module + "/" + moduleCategory;
+		action = action + "/" + event;// + "/" + subEvent;
+
+		if (requestData.isEmpty()) {
+			return "";
+		}
+		JSONObject jsonObject1 = new JSONObject();
+		JSONObject jsonObject2 = new JSONObject();
+		try {
+			JSONObject jsonObject = new JSONObject(requestData);
+			channel = jsonObject.getString("channel");
+			tokenID = jsonObject.getJSONObject("request_data").getString("tokenID");
+		} catch (JSONException e) {
+			return userService.getJsonError("-99", "Error-JSONException", g_error_msg, e.getMessage(), "99", channel, action, requestData, userName, module, "E");
+		}
+		if (channel.isEmpty()) {
+			return userService.getJsonError("-99", "Request Error", "channel not Found.", "Channel Code not Found.", "99", channel, action, requestData, userName, module, "U");
+		}
+		if (tokenID == null || tokenID.isEmpty()) {
+			return userService.getJsonError("-99", "Request Error", "tokenID not found", "tokenID not found", "99", channel, action, requestData, userName, module, "U");
+		}
+		Utility.print("mobile otp initial requestData:"+requestData);
+		userService.saveJsonLog(channel, "req", action, requestData, userName, module);
+
+		/**@validate request**/
+		inParam.put("action", action);
+		inParam.put("channel", channel);
+		inParam.put("tokenID", tokenID);
+		inParam.put("requestType",requestType);
+		outParam = userService.callingDBObject("procedure", "pack_otp_new.proc_validate_otp_request", inParam);
+		if (outParam.containsKey("error")) {
+			String dbError = (String) outParam.get("error");
+			return userService.getJsonError("-99", "Error in callingDBObject()", g_error_msg, dbError, "99", channel, action, requestData, userName, module, "E");
+		}
+
+		try {
+			dbResult = (String) outParam.get("result");
+			Utility.print("proc_validate_otp_request>dbResult:"+dbResult);
+			jsonObject1 = new JSONObject(dbResult);
+			if (jsonObject1.getString("status").equals("99")) {
+				return dbResult;
+			} else {
+				if (jsonObject1.getJSONObject("response_data").getString("verify").equalsIgnoreCase("Y")) {
+					return dbResult;
+				} else {
+					mobile 		= jsonObject1.getJSONObject("response_data").getString("mobile");
+					email 		= jsonObject1.getJSONObject("response_data").getString("email");
+					entityType  = jsonObject1.getJSONObject("response_data").getString("entityType");
+				}
+			}
+
+		}catch(JSONException e) {
+			return userService.getJsonError("-99", "Error-Exception", g_error_msg, e.getMessage(), "99", channel, action, requestData, userName, module, "E");
+		} catch (Exception e) {
+			return userService.getJsonError("-99", "Error-Exception", g_error_msg, e.getMessage(), "99", channel, action, requestData, userName, module, "E");
+		}
+
+		try {
+			URLConfigDto urlConfigDto = null;
+			String apiURL=null,apiKey=null,templateID=null;
+			int configCD;
+			if(requestType.equals("SMS")){
+				configCD = 49;
+			}else {//'EQFX_SMS'
+				if(entityType.equals("I")){
+					configCD = 50;
+				}else{
+					configCD = 51;
+				}
+			}
+			urlConfigDto = userService.findURLDtlByID(configCD);
+			if(urlConfigDto==null){
+				return userService.getJsonError("-99","URL Configuration not found for CODE("+configCD+")",g_error_msg,"URL Configuration not found for CODE("+configCD+")","99",channel,action,requestData,userName,module,"U");
+			}
+			apiURL 	= urlConfigDto.getUrl();
+			apiKey	= urlConfigDto.getKey();
+			templateID = urlConfigDto.getSmtp_port();
+			if(apiURL==null || apiURL.isEmpty()){
+				return userService.getJsonError("-99","URL not found for CODE("+configCD+")",g_error_msg,"URL not found for CODE("+configCD+")","99",channel,action,requestData,userName,module,"U");
+			}
+			if(apiKey==null || apiKey.isEmpty()) {
+				return userService.getJsonError("-99","URL Required Key not found for CODE("+configCD+")",g_error_msg,"URL Required Key not found for CODE("+configCD+")","99",channel,action,requestData,userName,module,"U");
+			}
+			if(templateID==null|| templateID.isEmpty()) {
+				return userService.getJsonError("-99","URL Required templateCD not found for CODE("+configCD+")",g_error_msg,"SMS template code not found for CODE("+configCD+")","99",channel,action,requestData,userName,module,"U");
+			}
+			Utility.print("apiURL:"+apiURL);
+			Utility.print("apiKey:"+apiKey);
+			Utility.print("templateID:"+templateID);
+			if(devOTP.equals("Y")){
+				jsonObject1 = new JSONObject();
+				jsonObject2 = new JSONObject();
+				String maskedMobile=null,maskedEmail = null;
+				if(mobile!=null||!mobile.isEmpty()){
+					maskedMobile = mobile.replaceAll(".(?=.{4})", "*");
+				}
+				if(email!=null||!email.isEmpty()){
+					maskedEmail  = email.replaceAll("(^[^@]{3}|(?!^)\\G)[^@]", "$1*");
+				}
+				transactionID = userService.getuniqueId();
+
+				jsonObject1.put("message", "Developer OTP configured");
+				jsonObject1.put("transactionID", transactionID);
+				jsonObject1.put("maskedMobileNo", maskedMobile);
+				jsonObject1.put("maskedEmail", maskedEmail);
+
+				jsonObject2.put("status", "0");
+				jsonObject2.put("response_data",jsonObject1);
+				inParam = new HashMap();
+				inParam.put("tokenID",tokenID);
+				inParam.put("transactionID",transactionID);
+				inParam.put("apiRequest","{}");
+				inParam.put("apiResponse",jsonObject2.toString());
+
+				outParam = userService.callingDBObject("procedure","pack_otp_new.proc_insert_otp_verification_sdt",inParam);
+				if(outParam.containsKey("error")){
+					String dbError = (String)outParam.get("error");
+					return userService.getJsonError("-99","Error in callingDBObject()",g_error_msg,dbError,"99",channel,action,requestData,userName,module,"E");
+				}
+				dbResult = (String) outParam.get("result");
+				if(dbResult.equalsIgnoreCase("success")){
+					Utility.print("OTP Generated Successfully");
+				}
+				userService.saveJsonLog(channel, "res", action, jsonObject2.toString(), userName,module);
+				return  jsonObject2.toString();
+			}
+			try{
+				String apiResult = null,apiJsonReq=null;
+				int httpStatus=0;
+				URL obj = new URL(apiURL);
+				HttpsURLConnection conn = (HttpsURLConnection) obj.openConnection();
+
+				conn.setRequestMethod("POST");
+				conn.addRequestProperty("content-Type", "application/json");
+				conn.addRequestProperty("authKey",apiKey);
+				conn.setDoOutput(true);
+				JSONObject requestJson = new JSONObject();
+				requestJson.put("mobile",mobile);
+				requestJson.put("templateId",templateID);
+				apiJsonReq = requestJson.toString();
+				Utility.print("API request data:\n"+apiJsonReq);
+				OutputStream os = conn.getOutputStream();
+				os.write(requestJson.toString().getBytes());
+				os.flush();
+				os.close();
+				//get response body of api request
+				apiResult = Utility.getURLResponse(conn);
+				httpStatus = conn.getResponseCode();
+				Utility.print("API response:"+apiResult);
+
+				if(httpStatus==conn.HTTP_OK){
+					String status = null,message=null;
+					try {
+						JSONObject jsonObject = new JSONObject(apiResult);
+						if(jsonObject.has("status")){
+							status = jsonObject.getString("status");
+						}else{
+							status = "Invalid status";
+						}
+						if(jsonObject.has("message")){
+							message = jsonObject.getString("message");
+						}
+						if(jsonObject.has("transactionId")){
+							transactionID = jsonObject.getString("transactionId");
+						}
+						if(message.trim()==null||message.isEmpty()){
+							message = "Status:"+status;
+						}
+						if(status.equals("200")){
+							try {
+								String maskedMobile=null,maskedEmail = null;
+								if(mobile!=null||!mobile.isEmpty()){
+									maskedMobile = mobile.replaceAll(".(?=.{4})", "*");
+								}
+								if(email!=null||!email.isEmpty()){
+									maskedEmail  = email.replaceAll("(^[^@]{3}|(?!^)\\G)[^@]", "$1*");
+								}
+								jsonObject1 = new JSONObject();
+								jsonObject2 = new JSONObject();
+								jsonObject1.put("message", message);
+								jsonObject1.put("transactionID", transactionID);
+								jsonObject1.put("maskedMobileNo", maskedMobile);
+
+								jsonObject2.put("status", "0");
+								jsonObject2.put("response_data",jsonObject1);
+
+								inParam = new HashMap();
+								inParam.put("tokenID",tokenID);
+								inParam.put("transactionID",transactionID);
+								inParam.put("apiRequest",apiJsonReq);
+								inParam.put("apiResponse",jsonObject.toString());
+
+								outParam = userService.callingDBObject("procedure","pack_otp_new.proc_insert_otp_verification_sdt",inParam);
+								if(outParam.containsKey("error")){
+									String dbError = (String)outParam.get("error");
+									return userService.getJsonError("-99","Error in callingDBObject()",g_error_msg,dbError,"99",channel,action,requestData,userName,module,"E");
+								}
+								dbResult = (String) outParam.get("result");
+								if(dbResult.equalsIgnoreCase("success")){
+									Utility.print("OTP Generated Successfully");
+								}
+								userService.saveJsonLog(channel,"res",action,jsonObject2.toString(),userName,module);
+								return jsonObject2.toString();
+							}catch (JSONException e){
+								return userService.getJsonError("-99","Error!",g_error_msg,e.getMessage(),"99",channel,action,requestData,userName,module,"E");
+							}catch (Exception e){
+								e.printStackTrace();
+								return userService.getJsonError("-99", "Error-Exception", g_error_msg, e.getMessage(), "99", channel, action, requestData, userName, module, "E");
+							}
+						}else {
+							return  userService.getJsonError("-99","Failed to send OTP",message,"Failed to send OTP Request("+message+")","99",channel,action,requestData,userName,module,"U");
+						}
+					}catch (JSONException e){
+						return userService.getJsonError("-99","Error!",g_error_msg,e.getMessage(),"99",channel,action,requestData,userName,module,"E");
+					}
+				}else{
+					return userService.getJsonError("-99","Error!",g_error_msg,"OTP API HTTP Status:"+httpStatus,"99",channel,action,requestData,userName,module,"U");
+				}
+			}catch (Exception e) {
+				e.printStackTrace();
+				return userService.getJsonError("-99", "Error-Exception", g_error_msg, e.getMessage(), "99", channel, action, requestData, userName, module, "E");
+			}
+		}catch (Exception e) {
+			return userService.getJsonError("-99", "Error-Exception", g_error_msg, e.getMessage(), "99", channel, action, requestData, userName, module, "E");
+		}
+	}
 
 	//1.4 EQUIFAX OTP RE-SEND
 	public String funcTokenBasedOTPRequestResend(String module,String moduleCategory, String action,String event,String requestData,String userName) {
@@ -3138,6 +3383,240 @@ public class RatnaafinApplication {
 			return userService.getJsonError("-99", "Error-Exception", g_error_msg, e.getMessage(), "99", channel, action, requestData, userName, module, "E");
 		}
 	}
+	//1.4 EQUIFAX OTP RE-SEND v2
+	public String funcTokenBasedOTPRequestResend_v2(String module,String moduleCategory, String action,String event,String requestData,String userName) {
+		String channel = null, mobile = null, email = null, dbResult = null,response=null,
+				transactionID=null,tokenID = null,devOTP="N",entityType=null;
+		HashMap inParam = new HashMap(), outParam;
+		SysParaMst sysParaMst_devOTP = userService.getParaVal("9999","9999",17);
+		if(sysParaMst_devOTP==null){
+			devOTP = "N";
+		}else{
+			devOTP = sysParaMst_devOTP.getPara_value();
+			devOTP = devOTP==null ? "N" : devOTP;
+		}
+		module = module + "/" + moduleCategory;
+		action = action + "/" + event;// + "/" + subEvent;
+
+		if (requestData.isEmpty()) {
+			return "";
+		}
+		JSONObject jsonObject1 = new JSONObject();
+		JSONObject jsonObject2 = new JSONObject();
+		try {
+			JSONObject jsonObject = new JSONObject(requestData);
+			channel = jsonObject.getString("channel");
+			jsonObject2 = jsonObject.getJSONObject("request_data");
+			if(jsonObject2.has("tokenID")){
+				tokenID = jsonObject2.getString("tokenID");
+			}
+			if(jsonObject2.has("mobileNo")){
+				mobile = jsonObject2.getString("mobileNo");
+			}
+		}catch (JSONException e) {
+			return userService.getJsonError("-99", "Error-JSONException", g_error_msg, e.getMessage(), "99", channel, action, requestData, userName, module, "E");
+		}
+		userService.saveJsonLog(channel, "req", action, requestData, userName, module);
+
+		if (channel.isEmpty()) {
+			return userService.getJsonError("-99", "Request Error", "channel not Found.", "Channel Code not Found.", "99", channel, action, requestData, userName, module, "U");
+		}
+		if (tokenID == null || tokenID.isEmpty()) {
+			return userService.getJsonError("-99", "Request Error", "tokenID not found", "tokenID not found", "99", channel, action, requestData, userName, module, "U");
+		}
+		if (mobile == null || mobile.isEmpty()) {
+			return userService.getJsonError("-99", "Request Error", "Mobile no not found", "Mobile no not found", "99", channel, action, requestData, userName, module, "U");
+		}
+
+
+		/**@validate request**/
+		inParam.put("action", action);
+		inParam.put("channel", channel);
+		inParam.put("tokenID", tokenID);
+		inParam.put("requestType","EQFX_SMS");
+		outParam = userService.callingDBObject("procedure", "pack_otp_new.proc_validate_otp_request", inParam);
+		if (outParam.containsKey("error")) {
+			String dbError = (String) outParam.get("error");
+			return userService.getJsonError("-99", "Error in callingDBObject()", g_error_msg, dbError, "99", channel, action, requestData, userName, module, "E");
+		}
+
+		try {
+			dbResult = (String) outParam.get("result");
+			jsonObject1 = new JSONObject(dbResult);
+			if (jsonObject1.getString("status").equals("99")) {
+				return dbResult;
+			} else {
+				if (jsonObject1.getJSONObject("response_data").getString("verify").equalsIgnoreCase("Y")) {
+					return dbResult;
+				} else {
+//					mobile 	= jsonObject1.getJSONObject("response_data").getString("mobile");
+					email 	= jsonObject1.getJSONObject("response_data").getString("email");
+					entityType  = jsonObject1.getJSONObject("response_data").getString("entityType");
+				}
+			}
+		} catch (JSONException e) {
+			return userService.getJsonError("-99", "Error-Exception", g_error_msg, e.getMessage(), "99", channel, action, requestData, userName, module, "E");
+		} catch (Exception e) {
+			return userService.getJsonError("-99", "Error-Exception", g_error_msg, e.getMessage(), "99", channel, action, requestData, userName, module, "E");
+		}
+
+		try{
+			URLConfigDto urlConfigDto = null;
+			String apiURL=null,apiKey=null,templateID=null;
+			int configCD = 0;
+			if(entityType.equals("I")){
+				configCD = 50;
+			}else{
+				configCD = 51;
+			}
+			urlConfigDto = userService.findURLDtlByID(configCD);
+			if(urlConfigDto==null){
+				return userService.getJsonError("-99","URL Configuration not found for CODE("+configCD+")",g_error_msg,"URL Configuration not found for CODE("+configCD+")","99",channel,action,requestData,userName,module,"U");
+			}
+			apiURL 	= urlConfigDto.getUrl();
+			apiKey	= urlConfigDto.getKey();
+			templateID = urlConfigDto.getSmtp_port();
+			if(apiURL==null || apiURL.isEmpty()){
+				return userService.getJsonError("-99","URL not found for CODE("+configCD+")",g_error_msg,"URL not found for CODE("+configCD+")","99",channel,action,requestData,userName,module,"U");
+			}
+			if(apiKey==null || apiKey.isEmpty()) {
+				return userService.getJsonError("-99","URL Required Key not found for CODE("+configCD+")",g_error_msg,"URL Required Key not found for CODE("+configCD+")","99",channel,action,requestData,userName,module,"U");
+			}
+			if(templateID==null|| templateID.isEmpty()) {
+				return userService.getJsonError("-99","URL Required templateID not found for CODE("+configCD+")",g_error_msg,"SMS template code not found for CODE("+configCD+")","99",channel,action,requestData,userName,module,"U");
+			}
+			Utility.print("apiURL:"+apiURL);
+			Utility.print("apiKey:"+apiKey);
+			Utility.print("templateID:"+templateID);
+			if(devOTP.equals("Y")){
+				jsonObject2 = new JSONObject();
+				jsonObject1 = new JSONObject();
+				String maskedMobile=null,maskedEmail = null;
+				maskedMobile = mobile.replaceAll(".(?=.{4})", "*");
+				maskedEmail  = email.replaceAll("(^[^@]{3}|(?!^)\\G)[^@]", "$1*");
+				transactionID = userService.getuniqueId();
+
+				jsonObject1.put("message", "Developer OTP configured");
+				jsonObject1.put("transactionID", transactionID);
+				jsonObject1.put("maskedMobileNo", maskedMobile);
+				jsonObject1.put("maskedEmail", maskedEmail);
+
+				jsonObject2.put("status", "0");
+				jsonObject2.put("response_data",jsonObject1);
+				inParam = new HashMap();
+				inParam.put("tokenID",tokenID);
+				inParam.put("transactionID",transactionID);
+				inParam.put("apiRequest","{}");
+				inParam.put("apiResponse",jsonObject1.toString());
+
+				outParam = userService.callingDBObject("procedure","pack_otp_new.proc_insert_otp_verification_sdt",inParam);
+				if(outParam.containsKey("error")){
+					String dbError = (String)outParam.get("error");
+					return userService.getJsonError("-99","Error in callingDBObject()",g_error_msg,dbError,"99",channel,action,requestData,userName,module,"E");
+				}
+				dbResult = (String) outParam.get("result");
+				if(dbResult.equalsIgnoreCase("success")){
+					Utility.print("OTP Generated Successfully");
+				}
+				userService.saveJsonLog(channel, "res", action, jsonObject2.toString(), userName,module);
+				return  jsonObject2.toString();
+			}
+			try{
+				String apiResult = null,apiJsonReq=null;
+				int httpStatus = 0;
+				URL obj = new URL(apiURL);
+				HttpsURLConnection conn = (HttpsURLConnection) obj.openConnection();
+
+				conn.setRequestMethod("POST");
+				conn.addRequestProperty("content-Type", "application/json");
+				conn.addRequestProperty("authKey",apiKey);
+				conn.setDoOutput(true);
+				JSONObject requestJson = new JSONObject();
+				requestJson.put("mobile",mobile);
+				requestJson.put("templateId",templateID);
+				apiJsonReq = requestJson.toString();
+				Utility.print("API request data:\n"+apiJsonReq);
+				OutputStream os = conn.getOutputStream();
+				os.write(requestJson.toString().getBytes());
+				os.flush();
+				os.close();
+				//get response body of api request
+				apiResult = Utility.getURLResponse(conn);
+				httpStatus = conn.getResponseCode();
+				Utility.print("API response:"+apiResult);
+
+				if(httpStatus==conn.HTTP_OK){
+					String status = null,message=null;
+					try {
+						JSONObject jsonObject = new JSONObject(apiResult);
+						if(jsonObject.has("status")){
+							status = jsonObject.getString("status");
+						}else{
+							status = "Invalid status";
+						}
+						if(jsonObject.has("message")){
+							message = jsonObject.getString("message");
+						}
+						if(jsonObject.has("transactionId")){
+							transactionID = jsonObject.getString("transactionId");
+						}
+						if(message.trim()==null||message.isEmpty()){
+							message = "Status:"+status;
+						}
+						if(status.equals("200")){
+							try {
+								String maskedMobile=null,maskedEmail = null;
+								if(mobile!=null||!mobile.isEmpty()){
+									maskedMobile = mobile.replaceAll(".(?=.{4})", "*");
+								}
+								jsonObject1 = new JSONObject();
+								jsonObject2 = new JSONObject();
+								jsonObject1.put("message", message);
+								jsonObject1.put("transactionID", transactionID);
+								jsonObject1.put("maskedMobileNo", maskedMobile);
+
+								jsonObject2.put("status", "0");
+								jsonObject2.put("response_data",jsonObject1);
+
+								inParam = new HashMap();
+								inParam.put("tokenID",tokenID);
+								inParam.put("transactionID",transactionID);
+								inParam.put("apiRequest",apiJsonReq);
+								inParam.put("apiResponse",jsonObject.toString());
+
+								outParam = userService.callingDBObject("procedure","pack_otp_new.proc_insert_otp_verification_sdt",inParam);
+								if(outParam.containsKey("error")){
+									String dbError = (String)outParam.get("error");
+									return userService.getJsonError("-99","Error in callingDBObject()",g_error_msg,dbError,"99",channel,action,requestData,userName,module,"E");
+								}
+								dbResult = (String) outParam.get("result");
+								if(dbResult.equalsIgnoreCase("success")){
+									Utility.print("OTP Generated Successfully");
+								}
+								userService.saveJsonLog(channel,"res",action,jsonObject2.toString(),userName,module);
+								return jsonObject2.toString();
+							}catch (JSONException e){
+								return userService.getJsonError("-99","Error!",g_error_msg,e.getMessage(),"99",channel,action,requestData,userName,module,"E");
+							}catch (Exception e){
+								e.printStackTrace();
+								return userService.getJsonError("-99", "Error-Exception", g_error_msg, e.getMessage(), "99", channel, action, requestData, userName, module, "E");
+							}
+						}else {
+							return  userService.getJsonError("-99","Failed to send OTP",message,"Failed to send OTP Request("+message+")","99",channel,action,requestData,userName,module,"U");
+						}
+					}catch (JSONException e){
+						return userService.getJsonError("-99","Error!",g_error_msg,e.getMessage(),"99",channel,action,requestData,userName,module,"E");
+					}
+				}else{
+					return userService.getJsonError("-99","Error!",g_error_msg,"OTP API HTTP Status:"+httpStatus,"99",channel,action,requestData,userName,module,"U");
+				}
+			}catch (Exception e) {
+				return userService.getJsonError("-99", "Error-Exception", g_error_msg, e.getMessage(), "99", channel, action, requestData, userName, module, "E");
+			}
+		}catch (Exception e) {
+			return userService.getJsonError("-99", "Error-Exception", g_error_msg, e.getMessage(), "99", channel, action, requestData, userName, module, "E");
+		}
+	}
 
 	//2.1 Email OTP verify
 	public String funcTokenBasedEmailOTPVerify(String module,String moduleCategory, String action,String event,String requestData,String userName){
@@ -3258,6 +3737,26 @@ public class RatnaafinApplication {
 					httpStatusCode = conn.getResponseCode();
 					Utility.print("HTTP Status:"+httpStatusCode);
 					Utility.print("api_response:"+apiResult);
+
+					//msg email log insert
+					inParam = new HashMap();
+					JSONObject jsonReqData = new JSONObject();
+					jsonReqData.put("tokenID",tokenID);
+					jsonReqData.put("requestType","EMAIL");
+					jsonReqData.put("requestData",requestJson.toString());
+					jsonReqData.put("responseData",apiResult);
+					jsonReqData.put("transactionID","");
+					jsonReqData.put("messageCategory","08");
+					inParam.put("action", "msg_email_log");
+					inParam.put("jsonReqData",jsonReqData.toString());
+					inParam.put("mobileNo",mobile);
+
+					outParam = userService.callingDBObject("procedure", "proc_calling_db_objects", inParam);
+					if (outParam.containsKey("error")) {
+						String dbError = (String) outParam.get("error");
+						return userService.getJsonError("-99", "Error in callingDBObject()", g_error_msg, dbError, "99", channel, action, requestData, userName, module, "E");
+					}
+
 					if(httpStatusCode==conn.HTTP_OK){
 						String resStatus="x",message=null;
 						jsonResponse = new JSONObject(apiResult);
@@ -3476,6 +3975,238 @@ public class RatnaafinApplication {
 							userService.saveJsonLog(channel,"res",action,"res",userName,module);
 							//if re-verify then update contact detail in equifax log table
 							//code deleted: combined with verify procedure
+							inParam = new HashMap();
+							inParam.put("tokenID", tokenID);
+							inParam.put("requestType",reqType);
+							inParam.put("mobileNo",mobile);
+							outParam = userService.callingDBObject("procedure", "pack_otp_new.proc_set_verified_otp", inParam);
+							if (outParam.containsKey("error")) {
+								String dbError = (String) outParam.get("error");
+								return userService.getJsonError("-99", "Error in callingDBObject()", g_error_msg, dbError, "99", channel, action, requestData, userName, module, "E");
+							}
+							dbResult = (String) outParam.get("result");
+							if (dbResult.equalsIgnoreCase("success")) {
+								if(equifaxOTP.equals("Y")){
+									String createJSON = "{\"request_data\":{\"tokenID\":\""+tokenID+"\",\"consent\":\""+consent+"\"},\n" +
+											"\"channel\":\"W\"}";
+									//external/equifax/request/send
+									return funcEquifaxSendRequest("external","equifax","request","send",createJSON,userName);
+								}
+							}
+							return jsonObject2.toString();
+						}
+						else{
+							return userService.getJsonError("-99","OTP verification failed",message,"OTP verification failed","99",channel,action,requestData,userName,module,"U");
+						}
+					}else{
+						return userService.getJsonError("-99", "Failed to verify OTP", g_error_msg, "OTP verification API HTTP Status:"+httpStatusCode, "99", channel, action, requestData, userName, module, "U");
+					}
+				}catch(Exception e) {
+					return userService.getJsonError("-99", "Error-JSONException", g_error_msg, e.getMessage(), "99", channel, action, requestData, userName, module, "E");
+				}
+			}
+		}catch (JSONException e){
+			return userService.getJsonError("-99", "Error-JSONException", g_error_msg, e.getMessage(), "99", channel, action, requestData, userName, module, "E");
+		}
+	}
+	//2.2 Mobile OTP verify v2.0
+	public String funcTokenBasedMobileOTPVerify_v2(String module,String moduleCategory, String action,String event,String requestData,String userName){
+		Utility.print("funcTokenBasedMobileOTPVerify_v2");
+		String channel = null, mobile = null, email = null, requestType = null, dbResult = null,response=null,
+				transactionID=null,equifaxOTP="N",reVerify = "N",consent=null,devOTP=null,tokenID = null,enteredOTP=null,reqType=null;
+		SysParaMst sysParaMst_devOTP = userService.getParaVal("9999","9999",17);
+		int configCD = 8; //mobile otp verify url
+		CRMAppDto crmAppDto = userService.findAppByID(1);
+		String apiResult = null;
+		HashMap inParam = new HashMap(),outParam;
+
+		if(sysParaMst_devOTP==null){
+			devOTP = "N";
+		}else{
+			devOTP = sysParaMst_devOTP.getPara_value();
+			devOTP = devOTP==null ? "N" : devOTP;
+		}
+		Utility.print("DEV OTP flag:"+devOTP);
+		if(moduleCategory.equalsIgnoreCase("equifax-otp")){
+			equifaxOTP = "Y";
+			reqType  = "EQFX_SMS";
+		}else{
+			reqType = "SMS";
+		}
+		if(event.equals("re-verify")){
+			reVerify = "Y";
+		}
+		module = module + "/" + moduleCategory;
+		action = action + "/" + event ;//+ "/" + subEvent;
+
+		if (requestData.isEmpty()) {
+			return "";
+		}
+		JSONObject jsonObject1 = new JSONObject();
+		JSONObject jsonObject2 = new JSONObject();
+		JSONObject jsonResponse = new JSONObject();
+
+		try {
+			JSONObject jsonObject = new JSONObject(requestData);
+			channel     = jsonObject.getString("channel");
+			jsonObject1 = jsonObject.getJSONObject("request_data");
+			if(jsonObject1.has("tokenID")){
+				tokenID = jsonObject1.getString("tokenID");
+			}
+			if(jsonObject1.has("transactionID")){
+				transactionID = jsonObject1.getString("transactionID");
+			}
+			if(jsonObject1.has("otp")){
+				enteredOTP = jsonObject1.getString("otp");
+			}
+			if(tokenID==null || tokenID.isEmpty()){
+				return userService.getJsonError("-99","Request Error","tokenID not found","tokenID not found","99",channel,action,requestData,userName,module,"U");
+			}
+			if(enteredOTP==null || enteredOTP.isEmpty()){
+				return userService.getJsonError("-99","Request Error","Please Enter OTP","Please Enter OTP","99",channel,action,requestData,userName,module,"U");
+			}
+			if(equifaxOTP.equals("Y")){
+				consent = jsonObject1.getString("consent");
+				if(consent==null||consent.isEmpty()){
+					return  userService.getJsonError("-99","Request Error","Provide consent to proceed","Provide consent to proceed","99",channel,action,requestData,userName,module,"U");
+				}
+				if(!consent.equals("Y")){
+					return  userService.getJsonError("-99","Request Error","Provide consent to proceed","Provide consent to proceed","99",channel,action,requestData,userName,module,"U");
+				}
+			}
+			if(reVerify.equals("Y")){
+				mobile = jsonObject1.getString("mobileNo");
+				if(mobile==null||mobile.isEmpty()){
+					return userService.getJsonError("-99","Request Error","Mobile number not found","Mobile number not found","99",channel,action,requestData,userName,module,"U");
+				}
+			}
+			//GET MOBILE NUMBER / EMAIL
+			OtpVerificationDtl otpVerificationDtl = userService.findOTPDetailByTokenID(tokenID);
+			if(otpVerificationDtl==null){
+				return userService.getJsonError("-99","Failed to get OTP verification detail","OTP detail not found","OTP detail not found","99",channel,action,requestData,userName,module,"U");
+			}
+			if(reVerify.equals("N")){
+				mobile = otpVerificationDtl.getOtp_sent_mobile();
+				if(mobile!=null){
+					mobile = userService.func_get_data_val(crmAppDto.getA(), crmAppDto.getB(),mobile);
+				}
+			}
+			email  = otpVerificationDtl.getOtp_sent_email();
+			if(email!=null){
+				email = userService.func_get_data_val(crmAppDto.getA(), crmAppDto.getB(),email);
+			}
+		}catch (JSONException e) {
+			return userService.getJsonError("-99", "Error-JSONException", g_error_msg, e.getMessage(), "99", channel, action, requestData, userName, module, "E");
+		}
+
+		try {
+			if(devOTP.equals("Y")){
+				if(enteredOTP.equals("000000")){
+					inParam.put("tokenID", tokenID);
+					inParam.put("requestType",reqType);
+					inParam.put("mobileNo",mobile);
+
+					outParam = userService.callingDBObject("procedure", "pack_otp_new.proc_set_verified_otp", inParam);
+					if (outParam.containsKey("error")) {
+						String dbError = (String) outParam.get("error");
+						return userService.getJsonError("-99", "Error in callingDBObject()", g_error_msg, dbError, "99", channel, action, requestData, userName, module, "E");
+					}
+					dbResult = (String) outParam.get("result");
+					if (dbResult.equalsIgnoreCase("success")) {
+						Utility.print("OTP verified successfully");
+						if(equifaxOTP.equals("Y")){
+							String createJSON = "{\"request_data\":{\"tokenID\":\""+tokenID+"\",\"consent\":\""+consent+"\"},\n" +
+									"\"channel\":\"W\"}";
+							//external/equifax/request/send
+							return funcEquifaxSendRequest("external","equifax","request","send",createJSON,userName);
+						}
+					}
+					jsonObject1 = new JSONObject();
+					jsonObject2 = new JSONObject();
+					jsonObject1.put("message", "OTP verified successfully");
+					jsonObject2.put("status", "0");
+					jsonObject2.put("response_data", jsonObject1);
+					return jsonObject2.toString();
+				}
+				else{
+					return userService.getJsonError("-99", "OTP verification failed", "Invalid OTP", "Invalid OTP", "99", channel, action, requestData, userName, module, "U");
+				}
+			}else {
+				String apiKey=null,apiURL=null;
+				int httpStatusCode=0;
+				URLConfigDto urlConfigDto = userService.findURLDtlByID(configCD);
+				if (urlConfigDto == null) {
+					return userService.getJsonError("-99", "URL Configuration not found for CODE(" + configCD + ")", g_error_msg, "URL Configuration not found for CODE(" + configCD + ")", "99", channel, action, requestData, userName, module, "U");
+				}
+				apiURL = urlConfigDto.getUrl();
+				apiKey = urlConfigDto.getKey();
+				if (apiKey == null || apiKey.isEmpty()) {
+					return userService.getJsonError("-99", "URL Required Key not found for CODE(" + configCD + ")", g_error_msg, "URL Required Key not found for CODE(" + configCD + ")", "99", channel, action, requestData, userName, module, "U");
+				}
+				if (apiURL == null || apiURL.isEmpty()) {
+					return userService.getJsonError("-99", "URL not found for CODE(" + configCD + ")", g_error_msg, "URL not found for CODE(" + configCD + ")", "99", channel, action, requestData, userName, module, "U");
+				}
+				Utility.print("apiURL:"+apiURL);
+				Utility.print("apiKey:"+apiKey);
+
+				try {
+					URL obj = new URL(apiURL);
+					HttpsURLConnection conn = (HttpsURLConnection) obj.openConnection();
+					conn.setRequestMethod("POST");
+					conn.addRequestProperty("content-Type", "application/json");
+					conn.addRequestProperty("authKey",apiKey);
+					conn.setDoOutput(true);
+					JSONObject requestJson = new JSONObject();
+
+					requestJson.put("mobile",mobile);
+					requestJson.put("otp",enteredOTP);
+					OutputStream os = conn.getOutputStream();
+					os.write(requestJson.toString().getBytes());
+					os.flush();
+					os.close();
+					Utility.print("OTP verify createJson:"+requestJson.toString());
+					//get response body of api request
+					apiResult = Utility.getURLResponse(conn);
+					httpStatusCode = conn.getResponseCode();
+
+					Utility.print("api response:"+apiResult);
+					Utility.print("httpStatusCode:"+httpStatusCode);
+					//msg email log insert
+					inParam = new HashMap();
+					JSONObject jsonReqData = new JSONObject();
+					jsonReqData.put("tokenID",tokenID);
+					jsonReqData.put("requestType",reqType);
+					jsonReqData.put("requestData",requestJson.toString());
+					jsonReqData.put("responseData",apiResult);
+					jsonReqData.put("transactionID","");
+					jsonReqData.put("messageCategory","07");
+					inParam.put("action", "msg_email_log");
+					inParam.put("jsonReqData",jsonReqData.toString());
+					inParam.put("mobileNo",mobile);
+					outParam = userService.callingDBObject("procedure", "proc_calling_db_objects", inParam);
+					if (outParam.containsKey("error")) {
+						String dbError = (String) outParam.get("error");
+						return userService.getJsonError("-99", "Error in callingDBObject()", g_error_msg, dbError, "99", channel, action, requestData, userName, module, "E");
+					}
+
+					if(httpStatusCode==200){
+						String resStatus="x",message=null;
+						jsonResponse = new JSONObject(apiResult);
+						if(jsonResponse.has("message")){
+							message = jsonResponse.getString("message");
+						}
+						if(jsonResponse.has("type")){ //for mob
+							resStatus = jsonResponse.getString("type");
+						}
+						if(message.equalsIgnoreCase("success")||resStatus.equals("200")){
+							jsonObject1 = new JSONObject();
+							jsonObject2 = new JSONObject();
+
+							jsonObject1.put("message",message);
+							jsonObject2.put("status","0");
+							jsonObject2.put("response_data",jsonObject1);
+							userService.saveJsonLog(channel,"res",action,"res",userName,module);
+							Utility.print("reVerify:"+reVerify);
 							inParam = new HashMap();
 							inParam.put("tokenID", tokenID);
 							inParam.put("requestType",reqType);

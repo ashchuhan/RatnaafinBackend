@@ -5,6 +5,11 @@ import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.ratnaafin.crm.common.service.Utility;
+import com.ratnaafin.crm.user.dto.CRMAppDto;
+import com.ratnaafin.crm.user.dto.URLConfigDto;
+import com.ratnaafin.crm.user.model.EquifaxAPILog;
+import com.ratnaafin.crm.user.model.OtpVerificationDtl;
+import com.ratnaafin.crm.user.model.SysParaMst;
 import com.ratnaafin.crm.user.service.UserService;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -14,19 +19,27 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import javax.net.ssl.HttpsURLConnection;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.OutputStream;
+import java.net.URL;
 import java.nio.file.Paths;
 import java.sql.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
 
 @Component
 public class Scheduler {
+    Utility utility = new Utility();
     public static final String CAM_FILE_PATH = Utility.LOCAL_PATH+Utility.SEPERATOR+"CAM"+Utility.SEPERATOR;
 
     public static String CAM_DATA = "N";
 
+    //for logger name
+    private static String logger = "schedulers";
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
@@ -153,7 +166,7 @@ public class Scheduler {
             } catch (SQLException ex5) {
             }
         }
-        return ls_return;
+        return ls_return;//hello
     }
     /*
     public String funcGenerateCAM(long leadID,long serialNo,long enteredBy) {
@@ -201,4 +214,759 @@ public class Scheduler {
         return "success";
     }*/
 
+    //added by sanjay on date: 11/06/2021
+    //change: sending sms/email and equifax consent link to customer
+    @Scheduled(fixedDelay = 60000, initialDelay = 30000)
+    public  void equifaxConsentMessageScheduler(){
+        utility.generateLog("info","start: equifaxConsentMessageScheduler",logger);
+        String objectName = this.getClass().getSimpleName()+".java",errorFlag=null,errorMessage=null,errorRemarks=null;
+        HashMap inParam=null,outParam=null;
+
+        String apiActive=null,tokenID=null,mobile=null,entityType=null,reqName=null,data=null,messageRtl=null,messageComm=null,
+                internalLink = null,apiJsonReq=null,linkSentStatus=null,remarks=null;
+
+        List<EquifaxAPILog> rows = userService.findEquifaxPendingLinkRecord();
+        CRMAppDto crmAppDto = userService.findAppByID(1);
+        //Invoid: Eqfx Consent Link send API Active
+        SysParaMst sysParaMst_sms_link_active = userService.getParaVal("9999","9999",25);
+        SysParaMst sysParaMst_link_detail_rtl = null, sysParaMst_link_detail_comm = null,sysParaMst_internal_link=null;
+        sysParaMst_internal_link = userService.getParaVal("9999","9999",203);
+        internalLink = sysParaMst_internal_link.getPara_value();
+        if(sysParaMst_sms_link_active==null){
+            apiActive="Y";
+        }else {
+            apiActive = sysParaMst_sms_link_active.getPara_value();
+            apiActive = apiActive == null ? "N" : apiActive;
+        }
+        Utility.print("(equifax)total rows:"+rows.size());
+        Utility.print("(equifax)link send api flag:"+apiActive);
+
+        if(rows.size()>=0 && apiActive.equals("Y")){
+            String apiURLRtl=null,apiURLComm=null,apiKeyRtl=null,apiKeyComm=null,templateIDRtl=null,templateIDComm=null;
+            int configCDRtl = 46,configCDComm = 48;
+
+            sysParaMst_link_detail_rtl = userService.getParaVal("9999","9999",26);
+            messageRtl = sysParaMst_link_detail_rtl.getPara_value();
+            Utility.print("messageRtl: "+messageRtl);
+            sysParaMst_link_detail_comm = userService.getParaVal("9999","9999",28);
+            messageComm = sysParaMst_link_detail_comm.getPara_value();
+            Utility.print("messageComm: "+messageComm);
+
+
+            URLConfigDto urlConfigDtoRtl  = userService.findURLDtlByID(configCDRtl);
+            apiURLRtl       = urlConfigDtoRtl.getUrl();
+            apiKeyRtl       = urlConfigDtoRtl.getKey();
+            templateIDRtl	= urlConfigDtoRtl.getSmtp_port();
+
+            URLConfigDto urlConfigDtoComm = userService.findURLDtlByID(configCDComm);
+            apiURLComm      = urlConfigDtoComm.getUrl();
+            apiKeyComm      = urlConfigDtoComm.getKey();
+            templateIDComm	= urlConfigDtoComm.getSmtp_port();
+
+            for(EquifaxAPILog equifaxAPILog:rows){
+                tokenID     = equifaxAPILog.getToken_id();
+                mobile      = equifaxAPILog.getLink_sent_mobile();
+                entityType  = equifaxAPILog.getEntity_type();
+                reqName     = equifaxAPILog.getReq_type();
+
+                //decrypt data
+                data = userService.func_get_data_val(crmAppDto.getA(),crmAppDto.getB(),mobile);
+                Utility.print("for:"+reqName);
+                Utility.print("data:"+data);
+
+                //send link
+                if(reqName.equals("RETAIL")){
+                    //link detail <link string>
+                    internalLink = internalLink.replace("<tokenID>",tokenID);
+                    messageRtl = messageRtl.replace("<link>",internalLink);
+                    Utility.print("message will be:\n"+messageRtl);
+                    try {
+                        if(apiURLRtl==null|| apiURLRtl.isEmpty()) {
+                            errorFlag = "E";
+                            errorMessage = "URL not found for CODE("+configCDRtl+")";
+                            errorRemarks = errorMessage;
+                            inParam = new HashMap();
+                            inParam.put("error_msg",errorMessage);
+                            inParam.put("remarks",errorRemarks);
+                            inParam.put("obj_name",objectName);
+                            inParam.put("error_flag",errorFlag);
+                            outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                            continue;
+                        }
+                        if(apiKeyRtl==null|| apiKeyRtl.isEmpty()) {
+                            errorFlag = "E";
+                            errorMessage = "URL key found for CODE("+configCDRtl+")";
+                            errorRemarks = errorMessage;
+                            inParam = new HashMap();
+                            inParam.put("error_msg",errorMessage);
+                            inParam.put("remarks",errorRemarks);
+                            inParam.put("obj_name",objectName);
+                            inParam.put("error_flag",errorFlag);
+                            outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                            continue;
+                        }
+                        if(templateIDRtl==null|| templateIDRtl.isEmpty()) {
+                            errorFlag = "E";
+                            errorMessage = "URL Required templateId not found for CODE("+configCDRtl+")";
+                            errorRemarks = errorMessage;
+                            inParam = new HashMap();
+                            inParam.put("error_msg",errorMessage);
+                            inParam.put("remarks",errorRemarks);
+                            inParam.put("obj_name",objectName);
+                            inParam.put("error_flag",errorFlag);
+                            outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                            continue;
+                        }
+                        try{
+                            String apiResult = null;
+                            int httpStatus=0;
+                            URL obj = new URL(apiURLRtl);
+                            HttpsURLConnection conn = (HttpsURLConnection) obj.openConnection();
+
+                            conn.setRequestMethod("POST");
+                            conn.addRequestProperty("content-Type", "application/json");
+                            conn.addRequestProperty("authKey",apiKeyRtl);
+                            conn.setDoOutput(true);
+                            JSONObject requestJson = new JSONObject();
+                            requestJson.put("mobile",data);
+                            requestJson.put("message",messageRtl);
+                            requestJson.put("templateId",templateIDRtl);
+                            apiJsonReq = requestJson.toString();
+                            Utility.print("API request data:\n"+apiJsonReq);
+                            OutputStream os = conn.getOutputStream();
+                            os.write(requestJson.toString().getBytes());
+                            os.flush();
+                            os.close();
+                            //get response body of api request
+                            apiResult = Utility.getURLResponse(conn);
+                            httpStatus = conn.getResponseCode();
+                            Utility.print("API response:"+apiResult);
+                            if(httpStatus==conn.HTTP_OK){
+                                String responseStatus = null,responseMessage=null,responseTransactionID=null;
+                                try {
+                                    JSONObject jsonObject = new JSONObject(apiResult);
+                                    //start: read key values
+                                    if(jsonObject.has("status")){
+                                        responseStatus = jsonObject.getString("status");
+                                    }else{
+                                        responseStatus = "Status Not found";
+                                    }
+                                    if(jsonObject.has("message")){
+                                        responseMessage = jsonObject.getString("message");
+                                    }
+                                    if(jsonObject.has("transactionId")){
+                                        responseTransactionID = jsonObject.getString("transactionId");
+                                    }
+                                    //end: read key values
+                                    //insert api log
+                                    inParam = new HashMap();
+                                    inParam.put("tokenID",tokenID);
+                                    inParam.put("requestType",reqName);
+                                    inParam.put("requestData",apiJsonReq);
+                                    inParam.put("responseData",apiResult);
+                                    inParam.put("transactionID",responseTransactionID);
+                                    inParam.put("messageCategory","03");
+                                    outParam = userService.callingDBObject("procedure","pack_healthcheck_common.proc_insert_msg_mail_api_log",inParam);
+
+                                    if (responseStatus.equals("200") && responseMessage.equalsIgnoreCase("success")){
+                                        linkSentStatus = "S";
+                                    }else{
+                                        linkSentStatus = "F";
+                                        remarks = responseMessage;
+                                    }
+                                    //Update "otp_verification_dtl"
+                                    userService.updateEqfxOTPLinkStatus(tokenID,linkSentStatus,remarks);
+                                }catch (JSONException e){
+                                    errorFlag = "E";
+                                    errorMessage = "JSONException:"+e.getMessage();
+                                    errorRemarks = errorMessage;
+                                    inParam = new HashMap();
+                                    inParam.put("error_msg",errorMessage);
+                                    inParam.put("remarks",errorRemarks);
+                                    inParam.put("obj_name",objectName);
+                                    inParam.put("error_flag",errorFlag);
+                                    outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                                    e.printStackTrace();
+                                    continue;
+                                }
+                            }else{
+                                errorFlag = "U";
+                                errorMessage = "API HTTP Status:"+httpStatus;
+                                errorRemarks = errorMessage;
+                                inParam = new HashMap();
+                                inParam.put("error_msg",errorMessage);
+                                inParam.put("remarks",errorRemarks);
+                                inParam.put("obj_name",objectName);
+                                inParam.put("error_flag",errorFlag);
+                                outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                                continue;
+                            }
+                        }catch (Exception e) {
+                            Utility.print("API Calling failed:"+e.getMessage());
+                            errorFlag = "E";
+                            errorMessage = "Exception:"+e.getMessage();
+                            errorRemarks = "Error while calling SMS send API";
+                            inParam = new HashMap();
+                            inParam.put("error_msg",errorMessage);
+                            inParam.put("remarks",errorRemarks);
+                            inParam.put("obj_name",objectName);
+                            inParam.put("error_flag",errorFlag);
+                            outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                            e.printStackTrace();
+                            continue;
+                        }
+                    }catch (Exception e) {
+                        errorFlag = "E";
+                        errorMessage = "Exception:"+e.getMessage();
+                        errorRemarks = "Error while getting URL detail(s) for SMS send API";
+                        inParam = new HashMap();
+                        inParam.put("error_msg",errorMessage);
+                        inParam.put("remarks",errorRemarks);
+                        inParam.put("obj_name",objectName);
+                        inParam.put("error_flag",errorFlag);
+                        outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                        continue;
+                    }
+                }
+                else if(reqName.equals("COMMERCIAL"))
+                {
+                    //link detail <link string>
+                    internalLink = internalLink.replace("<tokenID>",tokenID);
+                    messageComm = messageComm.replace("<link>",internalLink);
+                    Utility.print("message will be:\n"+messageComm);
+                    try {
+                        if(apiURLComm==null|| apiURLComm.isEmpty()) {
+                            errorFlag = "E";
+                            errorMessage = "URL not found for CODE("+configCDComm+")";
+                            errorRemarks = errorMessage;
+                            inParam = new HashMap();
+                            inParam.put("error_msg",errorMessage);
+                            inParam.put("remarks",errorRemarks);
+                            inParam.put("obj_name",objectName);
+                            inParam.put("error_flag",errorFlag);
+                            outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                            continue;
+                        }
+                        if(apiKeyComm==null|| apiKeyComm.isEmpty()) {
+                            errorFlag = "E";
+                            errorMessage = "URL key found for CODE("+configCDComm+")";
+                            errorRemarks = errorMessage;
+                            inParam = new HashMap();
+                            inParam.put("error_msg",errorMessage);
+                            inParam.put("remarks",errorRemarks);
+                            inParam.put("obj_name",objectName);
+                            inParam.put("error_flag",errorFlag);
+                            outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                            continue;
+                        }
+                        if(templateIDComm==null|| templateIDComm.isEmpty()) {
+                            errorFlag = "E";
+                            errorMessage = "URL Required templateId not found for CODE("+configCDComm+")";
+                            errorRemarks = errorMessage;
+                            inParam = new HashMap();
+                            inParam.put("error_msg",errorMessage);
+                            inParam.put("remarks",errorRemarks);
+                            inParam.put("obj_name",objectName);
+                            inParam.put("error_flag",errorFlag);
+                            outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                            continue;
+                        }
+                        try{
+                            String apiResult = null;
+                            int httpStatus=0;
+                            URL obj = new URL(apiURLComm);
+                            HttpsURLConnection conn = (HttpsURLConnection) obj.openConnection();
+
+                            conn.setRequestMethod("POST");
+                            conn.addRequestProperty("content-Type", "application/json");
+                            conn.addRequestProperty("authKey",apiKeyComm);
+                            conn.setDoOutput(true);
+                            JSONObject requestJson = new JSONObject();
+                            requestJson.put("mobile",data);
+                            requestJson.put("message",messageComm);
+                            requestJson.put("templateId",templateIDComm);
+                            apiJsonReq = requestJson.toString();
+                            Utility.print("API request data:\n"+apiJsonReq);
+                            OutputStream os = conn.getOutputStream();
+                            os.write(requestJson.toString().getBytes());
+                            os.flush();
+                            os.close();
+                            //get response body of api request
+                            apiResult = Utility.getURLResponse(conn);
+                            httpStatus = conn.getResponseCode();
+                            Utility.print("API response:"+apiResult);
+                            if(httpStatus==conn.HTTP_OK){
+                                String responseStatus = null,responseMessage=null,responseTransactionID=null;
+                                try {
+                                    JSONObject jsonObject = new JSONObject(apiResult);
+                                    //start: read key values
+                                    if(jsonObject.has("status")){
+                                        responseStatus = jsonObject.getString("status");
+                                    }else{
+                                        responseStatus = "Status Not found";
+                                    }
+                                    if(jsonObject.has("message")){
+                                        responseMessage = jsonObject.getString("message");
+                                    }
+                                    if(jsonObject.has("transactionId")){
+                                        responseTransactionID = jsonObject.getString("transactionId");
+                                    }
+                                    //end: read key values
+                                    //insert api log
+                                    inParam = new HashMap();
+                                    inParam.put("tokenID",tokenID);
+                                    inParam.put("requestType",reqName);
+                                    inParam.put("requestData",apiJsonReq);
+                                    inParam.put("responseData",apiResult);
+                                    inParam.put("transactionID",responseTransactionID);
+                                    inParam.put("messageCategory","04");
+                                    outParam = userService.callingDBObject("procedure","pack_healthcheck_common.proc_insert_msg_mail_api_log",inParam);
+
+                                    if (responseStatus.equals("200") && responseMessage.equalsIgnoreCase("success")){
+                                        linkSentStatus = "S";
+                                    }else{
+                                        linkSentStatus = "F";
+                                        remarks = responseMessage;
+                                    }
+                                    //Update "otp_verification_dtl"
+                                    userService.updateEqfxOTPLinkStatus(tokenID,linkSentStatus,remarks);
+                                }catch (JSONException e){
+                                    errorFlag = "E";
+                                    errorMessage = "JSONException:"+e.getMessage();
+                                    errorRemarks = errorMessage;
+                                    inParam = new HashMap();
+                                    inParam.put("error_msg",errorMessage);
+                                    inParam.put("remarks",errorRemarks);
+                                    inParam.put("obj_name",objectName);
+                                    inParam.put("error_flag",errorFlag);
+                                    outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                                    e.printStackTrace();
+                                    continue;
+                                }
+                            }else{
+                                errorFlag = "U";
+                                errorMessage = "API HTTP Status:"+httpStatus;
+                                errorRemarks = errorMessage;
+                                inParam = new HashMap();
+                                inParam.put("error_msg",errorMessage);
+                                inParam.put("remarks",errorRemarks);
+                                inParam.put("obj_name",objectName);
+                                inParam.put("error_flag",errorFlag);
+                                outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                                continue;
+                            }
+                        }catch (Exception e) {
+                            Utility.print("API Calling failed:"+e.getMessage());
+                            errorFlag = "E";
+                            errorMessage = "Exception:"+e.getMessage();
+                            errorRemarks = "Error while calling SMS send API";
+                            inParam = new HashMap();
+                            inParam.put("error_msg",errorMessage);
+                            inParam.put("remarks",errorRemarks);
+                            inParam.put("obj_name",objectName);
+                            inParam.put("error_flag",errorFlag);
+                            outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                            e.printStackTrace();
+                            continue;
+                        }
+                    }catch (Exception e) {
+                        errorFlag = "E";
+                        errorMessage = "Exception:"+e.getMessage();
+                        errorRemarks = "Error while getting URL detail(s) for SMS send API";
+                        inParam = new HashMap();
+                        inParam.put("error_msg",errorMessage);
+                        inParam.put("remarks",errorRemarks);
+                        inParam.put("obj_name",objectName);
+                        inParam.put("error_flag",errorFlag);
+                        outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                        continue;
+                    }
+                }
+
+            }//end for loop
+        }
+    }
+
+    @Scheduled(fixedDelay = 60000, initialDelay = 30000)
+    public void smsEmailSendScheduler(){
+        utility.generateLog("info","start:smsEmailSendScheduler",logger);
+        String objectName = this.getClass().getSimpleName()+".java",errorFlag=null,errorMessage=null,errorRemarks=null;
+        HashMap inParam=null,outParam=null;
+        List<OtpVerificationDtl> rows = userService.findPendingOTPLinkDetail();
+        CRMAppDto crmAppDto = userService.findAppByID(1);
+        String mobile=null,email=null,requestType=null,tokenID=null,data=null,apiActive=null,message=null,internalLink=null;
+        String apiJsonReq=null,linkSentStatus = null,remarks=null;
+        Utility.print("row:"+rows.size());
+        utility.generateLog("info","rows("+rows.size()+") fetch by findPendingOTPLinkDetail",logger);
+        if(rows.size()>=0){
+            for(OtpVerificationDtl otpVerificationDtl:rows){
+                requestType = otpVerificationDtl.getReq_type();
+                tokenID     = otpVerificationDtl.getToken_id();
+                mobile      = otpVerificationDtl.getOtp_sent_mobile();
+                email       = otpVerificationDtl.getOtp_sent_email();
+                data        = mobile;//requestType.equals("EMAIL")?email:mobile;
+                //decrypt data
+                data = userService.func_get_data_val(crmAppDto.getA(),crmAppDto.getB(),data);
+                Utility.print(requestType+":"+data);
+                //send link
+                if(requestType.equals("SMS") && !mobile.isEmpty()){
+                    //send sms on mobile for verification
+                    //invoid mobile sms link active
+                    SysParaMst sysParaMst_sms_link_active = userService.getParaVal("9999","9999",23);
+                    SysParaMst sysParaMst_link_detail = null, sysParaMst_internal_link=null;
+                    if(sysParaMst_sms_link_active==null){
+                        apiActive="Y";
+                    }else {
+                        apiActive = sysParaMst_sms_link_active.getPara_value();
+                        apiActive = apiActive == null ? "N" : apiActive;
+                    }
+                    if(apiActive.equals("N")){
+                        continue;
+                    }
+                    //link detail <message string>
+                    sysParaMst_link_detail = userService.getParaVal("9999","9999",22);
+                    message = sysParaMst_link_detail.getPara_value();
+                    //link detail <link string>
+                    sysParaMst_internal_link = userService.getParaVal("9999","9999",201);
+                    internalLink = sysParaMst_internal_link.getPara_value();
+                    internalLink = internalLink.replace("<tokenID>",tokenID);
+                    message = message.replace("<link>",internalLink);
+                    Utility.print("mobile message will be:\n"+message);
+                    try {
+                        String apiURL=null,apiKey=null,templateID=null;
+                        int configCD = 45; //Invoid: sms send API (for OTP)
+
+                        URLConfigDto urlConfigDto = userService.findURLDtlByID(configCD);
+                        apiURL = urlConfigDto.getUrl();
+                        apiKey = urlConfigDto.getKey();
+                        templateID	= urlConfigDto.getSmtp_port();
+                        if(apiURL==null|| apiURL.isEmpty()) {
+                            errorFlag = "E";
+                            errorMessage = "URL not found for CODE("+configCD+")";
+                            errorRemarks = errorMessage;
+                            inParam = new HashMap();
+                            inParam.put("error_msg",errorMessage);
+                            inParam.put("remarks",errorRemarks);
+                            inParam.put("obj_name",objectName);
+                            inParam.put("error_flag",errorFlag);
+                            outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                            continue;
+                        }
+                        if(apiKey==null|| apiKey.isEmpty()) {
+                            errorFlag = "E";
+                            errorMessage = "URL key found for CODE("+configCD+")";
+                            errorRemarks = errorMessage;
+                            inParam = new HashMap();
+                            inParam.put("error_msg",errorMessage);
+                            inParam.put("remarks",errorRemarks);
+                            inParam.put("obj_name",objectName);
+                            inParam.put("error_flag",errorFlag);
+                            outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                            continue;
+                        }
+                        if(templateID==null|| templateID.isEmpty()) {
+                            errorFlag = "E";
+                            errorMessage = "URL Required templateId not found for CODE("+configCD+")";
+                            errorRemarks = errorMessage;
+                            inParam = new HashMap();
+                            inParam.put("error_msg",errorMessage);
+                            inParam.put("remarks",errorRemarks);
+                            inParam.put("obj_name",objectName);
+                            inParam.put("error_flag",errorFlag);
+                            outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                            continue;
+                        }
+                        try{
+                            String apiResult = null;
+                            int httpStatus=0;
+                            URL obj = new URL(apiURL);
+                            HttpsURLConnection conn = (HttpsURLConnection) obj.openConnection();
+
+                            conn.setRequestMethod("POST");
+                            conn.addRequestProperty("content-Type", "application/json");
+                            conn.addRequestProperty("authKey",apiKey);
+                            conn.setDoOutput(true);
+                            JSONObject requestJson = new JSONObject();
+                            requestJson.put("mobile",data);
+                            requestJson.put("message",message);
+                            requestJson.put("templateId",templateID);
+                            apiJsonReq = requestJson.toString();
+                            Utility.print("Mobile verification sms API request data:\n"+apiJsonReq);
+                            OutputStream os = conn.getOutputStream();
+                            os.write(requestJson.toString().getBytes());
+                            os.flush();
+                            os.close();
+                            //get response body of api request
+                            apiResult = Utility.getURLResponse(conn);
+                            httpStatus = conn.getResponseCode();
+                            Utility.print("API response:"+apiResult);
+                            if(httpStatus==conn.HTTP_OK){
+                                String responseStatus = null,responseMessage=null,responseTransactionID=null;
+                                try {
+                                    JSONObject jsonObject = new JSONObject(apiResult);
+                                    //start: read key values
+                                    if(jsonObject.has("status")){
+                                        responseStatus = jsonObject.getString("status");
+                                    }else{
+                                        responseStatus = "Status Not found";
+                                    }
+                                    if(jsonObject.has("message")){
+                                        responseMessage = jsonObject.getString("message");
+                                    }
+                                    if(jsonObject.has("transactionId")){
+                                        responseTransactionID = jsonObject.getString("transactionId");
+                                    }
+                                    //end: read key values
+                                    //insert api log
+                                    inParam = new HashMap();
+                                    inParam.put("tokenID",tokenID);
+                                    inParam.put("requestType",requestType);
+                                    inParam.put("requestData",apiJsonReq);
+                                    inParam.put("responseData",apiResult);
+                                    inParam.put("transactionID",responseTransactionID);
+                                    inParam.put("messageCategory","01");
+
+                                    outParam = userService.callingDBObject("procedure","pack_healthcheck_common.proc_insert_msg_mail_api_log",inParam);
+
+                                    if (responseStatus.equals("200") && responseMessage.equalsIgnoreCase("success")){
+                                        linkSentStatus = "S";
+                                    }else{
+                                        linkSentStatus = "F";
+                                        remarks = responseMessage;
+                                    }
+                                    //Update "otp_verification_dtl"
+                                    userService.updateOTPLinkSentStatus(tokenID,linkSentStatus,remarks);
+                                }catch (JSONException e){
+                                    errorFlag = "E";
+                                    errorMessage = "JSONException:"+e.getMessage();
+                                    errorRemarks = errorMessage;
+                                    inParam = new HashMap();
+                                    inParam.put("error_msg",errorMessage);
+                                    inParam.put("remarks",errorRemarks);
+                                    inParam.put("obj_name",objectName);
+                                    inParam.put("error_flag",errorFlag);
+                                    outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                                    e.printStackTrace();
+                                    continue;
+                                }
+                            }else{
+                                errorFlag = "U";
+                                errorMessage = "SMS Send API HTTP Status:"+httpStatus;
+                                errorRemarks = errorMessage;
+                                inParam = new HashMap();
+                                inParam.put("error_msg",errorMessage);
+                                inParam.put("remarks",errorRemarks);
+                                inParam.put("obj_name",objectName);
+                                inParam.put("error_flag",errorFlag);
+                                outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                                continue;
+                            }
+                        }catch (Exception e) {
+                            Utility.print("API Calling failed:"+e.getMessage());
+                            errorFlag = "E";
+                            errorMessage = "Exception:"+e.getMessage();
+                            errorRemarks = "Error while calling SMS send API";
+                            inParam = new HashMap();
+                            inParam.put("error_msg",errorMessage);
+                            inParam.put("remarks",errorRemarks);
+                            inParam.put("obj_name",objectName);
+                            inParam.put("error_flag",errorFlag);
+                            outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                            e.printStackTrace();
+                            continue;
+                        }
+                    }catch (Exception e) {
+                        errorFlag = "E";
+                        errorMessage = "Exception:"+e.getMessage();
+                        errorRemarks = "Error while getting URL detail(s) for SMS send API";
+                        inParam = new HashMap();
+                        inParam.put("error_msg",errorMessage);
+                        inParam.put("remarks",errorRemarks);
+                        inParam.put("obj_name",objectName);
+                        inParam.put("error_flag",errorFlag);
+                        outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                        continue;
+                    }
+                }else if(requestType.equals("EMAIL") && !mobile.isEmpty())
+                {
+                    //for send email for email verification
+                    SysParaMst sysParaMst_link_active = userService.getParaVal("9999","9999",24);
+                    SysParaMst sysParaMst_link_detail = null, sysParaMst_internal_link=null;
+                    if(sysParaMst_link_active==null){
+                        apiActive="Y";
+                    }else {
+                        apiActive = sysParaMst_link_active.getPara_value();
+                        apiActive = apiActive == null ? "N" : apiActive;
+                    }
+                    if(apiActive.equals("N")){
+                        Utility.print("Email send API service is temporary disabled");
+                        continue;
+                    }
+                    //link detail <message string>
+                    sysParaMst_link_detail = userService.getParaVal("9999","9999",27);
+                    message = sysParaMst_link_detail.getPara_value();
+                    //link detail <link string>
+                    sysParaMst_internal_link = userService.getParaVal("9999","9999",202);
+                    internalLink = sysParaMst_internal_link.getPara_value();
+                    internalLink = internalLink.replace("<tokenID>",tokenID);
+                    message = message.replace("<link>",internalLink);
+                    try {
+                        String apiURL=null,apiKey=null,templateID=null;
+                        int configCD = 47; //Invoid: sms send API(email-verify)
+
+                        URLConfigDto urlConfigDto = userService.findURLDtlByID(configCD);
+                        apiURL = urlConfigDto.getUrl();
+                        apiKey = urlConfigDto.getKey();
+                        templateID	= urlConfigDto.getSmtp_port();
+                        if(apiURL==null|| apiURL.isEmpty()) {
+                            errorFlag = "E";
+                            errorMessage = "URL not found for CODE("+configCD+")";
+                            errorRemarks = errorMessage;
+                            inParam = new HashMap();
+                            inParam.put("error_msg",errorMessage);
+                            inParam.put("remarks",errorRemarks);
+                            inParam.put("obj_name",objectName);
+                            inParam.put("error_flag",errorFlag);
+                            outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                            continue;
+                        }
+                        if(apiKey==null|| apiKey.isEmpty()) {
+                            errorFlag = "E";
+                            errorMessage = "URL key found for CODE("+configCD+")";
+                            errorRemarks = requestType+"|"+errorMessage;
+                            inParam = new HashMap();
+                            inParam.put("error_msg",errorMessage);
+                            inParam.put("remarks",errorRemarks);
+                            inParam.put("obj_name",objectName);
+                            inParam.put("error_flag",errorFlag);
+                            outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                            continue;
+                        }
+                        if(templateID==null|| templateID.isEmpty()) {
+                            errorFlag = "E";
+                            errorMessage = "URL Required templateId not found for CODE("+configCD+")";
+                            errorRemarks = requestType+"|"+errorMessage;
+                            inParam = new HashMap();
+                            inParam.put("error_msg",errorMessage);
+                            inParam.put("remarks",errorRemarks);
+                            inParam.put("obj_name",objectName);
+                            inParam.put("error_flag",errorFlag);
+                            outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                            continue;
+                        }
+                        try{
+                            String apiResult = null;
+                            int httpStatus=0;
+                            URL obj = new URL(apiURL);
+                            HttpsURLConnection conn = (HttpsURLConnection) obj.openConnection();
+
+                            conn.setRequestMethod("POST");
+                            conn.addRequestProperty("content-Type", "application/json");
+                            conn.addRequestProperty("authKey",apiKey);
+                            conn.setDoOutput(true);
+                            JSONObject requestJson = new JSONObject();
+                            requestJson.put("mobile",data);
+                            requestJson.put("message",message);
+                            requestJson.put("templateId",templateID);
+                            apiJsonReq = requestJson.toString();
+                            Utility.print("Email verification API request data:\n"+apiJsonReq);
+                            OutputStream os = conn.getOutputStream();
+                            os.write(requestJson.toString().getBytes());
+                            os.flush();
+                            os.close();
+                            //get response body of api request
+                            apiResult = Utility.getURLResponse(conn);
+                            httpStatus = conn.getResponseCode();
+                            Utility.print("API response:"+apiResult);
+                            if(httpStatus==conn.HTTP_OK){
+                                String responseStatus = null,responseMessage=null,responseTransactionID=null;
+                                try {
+                                    JSONObject jsonObject = new JSONObject(apiResult);
+                                    //start: read key values
+                                    if(jsonObject.has("status")){
+                                        responseStatus = jsonObject.getString("status");
+                                    }else{
+                                        responseStatus = "Status Not found";
+                                    }
+                                    if(jsonObject.has("message")){
+                                        responseMessage = jsonObject.getString("message");
+                                    }
+                                    if(jsonObject.has("transactionId")){
+                                        responseTransactionID = jsonObject.getString("transactionId");
+                                    }
+                                    //end: read key values
+                                    //insert api log
+                                    inParam = new HashMap();
+                                    inParam.put("tokenID",tokenID);
+                                    inParam.put("requestType",requestType);
+                                    inParam.put("requestData",apiJsonReq);
+                                    inParam.put("responseData",apiResult);
+                                    inParam.put("transactionID",responseTransactionID);
+                                    inParam.put("messageCategory","02");
+                                    outParam = userService.callingDBObject("procedure","pack_healthcheck_common.proc_insert_msg_mail_api_log",inParam);
+
+                                    if (responseStatus.equals("200") && responseMessage.equalsIgnoreCase("success")){
+                                        linkSentStatus = "S";
+                                    }else{
+                                        linkSentStatus = "F";
+                                        remarks = responseMessage;
+                                    }
+                                    //Update "otp_verification_dtl"
+                                    userService.updateOTPLinkSentStatus(tokenID,linkSentStatus,remarks);
+                                }catch (JSONException e){
+                                    errorFlag = "E";
+                                    errorMessage = "JSONException:"+e.getMessage();
+                                    errorRemarks = requestType+"|"+errorMessage;
+                                    inParam = new HashMap();
+                                    inParam.put("error_msg",errorMessage);
+                                    inParam.put("remarks",errorRemarks);
+                                    inParam.put("obj_name",objectName);
+                                    inParam.put("error_flag",errorFlag);
+                                    outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                                    e.printStackTrace();
+                                    continue;
+                                }
+                            }else{
+                                errorFlag = "U";
+                                errorMessage = "Email Send API HTTP Status:"+httpStatus;
+                                errorRemarks = requestType+"|"+errorMessage;
+                                inParam = new HashMap();
+                                inParam.put("error_msg",errorMessage);
+                                inParam.put("remarks",errorRemarks);
+                                inParam.put("obj_name",objectName);
+                                inParam.put("error_flag",errorFlag);
+                                outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                                continue;
+                            }
+                        }catch (Exception e) {
+                            Utility.print("API Calling failed:"+e.getMessage());
+                            errorFlag = "E";
+                            errorMessage = "Exception:"+e.getMessage();
+                            errorRemarks = requestType+"|Error while calling SMS send API";
+                            inParam = new HashMap();
+                            inParam.put("error_msg",errorMessage);
+                            inParam.put("remarks",errorRemarks);
+                            inParam.put("obj_name",objectName);
+                            inParam.put("error_flag",errorFlag);
+                            outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                            e.printStackTrace();
+                            continue;
+                        }
+                    }catch (Exception e) {
+                        errorFlag = "E";
+                        errorMessage = "Exception:"+e.getMessage();
+                        errorRemarks = requestType+"|Error while getting URL detail(s) for Email send API";
+                        inParam = new HashMap();
+                        inParam.put("error_msg",errorMessage);
+                        inParam.put("remarks",errorRemarks);
+                        inParam.put("obj_name",objectName);
+                        inParam.put("error_flag",errorFlag);
+                        outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
+                        continue;
+                    }
+                }
+
+            }//end for loop
+        }
+    }//end of method
 }

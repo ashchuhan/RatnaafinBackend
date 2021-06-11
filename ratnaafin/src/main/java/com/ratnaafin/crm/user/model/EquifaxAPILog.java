@@ -1,9 +1,9 @@
 package com.ratnaafin.crm.user.model;
 
-import com.ratnaafin.crm.user.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
-
-import javax.persistence.*;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.Table;
 import java.util.Date;
 
 @Table(name = "equifax_api_log_new")
@@ -87,7 +87,7 @@ public class EquifaxAPILog {
     private String link_sent_mobile;
 
     @Column(name = "LINK_SENT_DATE")
-    private String link_sent_date;
+    private Date link_sent_date;
 
     public String getToken_id() {
         return token_id;
@@ -287,5 +287,13 @@ public class EquifaxAPILog {
 
     public void setLink_sent_mobile(String link_sent_mobile) {
         this.link_sent_mobile = link_sent_mobile;
+    }
+
+    public Date getLink_sent_date() {
+        return link_sent_date;
+    }
+
+    public void setLink_sent_date(Date link_sent_date) {
+        this.link_sent_date = link_sent_date;
     }
 }

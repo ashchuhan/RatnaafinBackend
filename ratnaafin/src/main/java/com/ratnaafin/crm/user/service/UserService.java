@@ -111,12 +111,14 @@ public interface UserService {
     void saveCorpositoryAPI(LosCorpositoryAPI losCorpositoryAPI);
     String getEntityNameById(Long refId);
     //added on 30/04/2021 SANJAY
-    void updateEquifaxAPILog(String token_id,String req_status, String res_status,String res_data,String errorCode,String errorDesc);
-    List<EquifaxAPILog> getEquifaxPendingRecords();
     OtpVerificationDtl findOTPDetailByTokenID(String tokenID);
     List<OtpVerificationDtl> findPendingOTPLinkDetail();
-    void updateOTPLinkSentStatus(String token_id, String status);
-    EquifaxAPILog findEquifaxDetailByTokenId(String tokenID);
-    void equifaxOTPLinkSentStatus(String token_id, String status);
+    void updateOTPLinkSentStatus(String token_id, String status,String remarks);
     //added on 30/04/2021 END
+
+    //EquifaxAPILogDao-modified and added on: 11/06/2021
+    List<EquifaxAPILog> findEquifaxPendingLinkRecord();
+    void updateEqfxOTPLinkStatus(String token_id, String status,String remarks);
+    EquifaxAPILog findEquifaxDetailByTokenId(String tokenID);
+    void updateEquifaxAPILog(String token_id,String req_status, String res_status,String res_data,String errorCode,String errorDesc);
 }

@@ -26,9 +26,14 @@ import java.net.*;
 import java.security.*;
 import java.sql.Blob;
 import java.sql.SQLException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.FileHandler;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -613,19 +618,52 @@ public class Utility extends  Bucket {
         bis.close();
     }
 
-//    public static void writeToZipFile1( InputStream ins,String fileName, ZipArchiveOutputStream zipStream) throws FileNotFoundException, IOException
-//    {
-//        BufferedInputStream bis = new BufferedInputStream(ins);
-//        System.out.println("zipEntry-name:"+fileName);
-//        ZipArchiveEntry zipEntry = new ZipArchiveEntry(fileName);
-//        zipStream.putArchiveEntry(zipEntry);
-//        byte[] bytes = new byte[1024];
-//        int length;
-//        while ((length = bis.read(bytes)) >= 0)
-//        {
-//            zipStream.write(bytes, 0, length);
-//        }
-//        zipStream.closeArchiveEntry();
-//        bis.close();
-//    }
+    public void generateLog(String level,String message,String logfileName){
+        Logger logger = Logger.getLogger(logfileName);
+        FileHandler fh;
+        try {
+            Date date = new Date();
+            SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy");
+            String strDate= dateFormat.format(date);
+            String filepath=createDirectory("logs"+SEPERATOR+strDate).getCanonicalPath();
+
+
+            filepath = filepath+"/"+logfileName+".log";
+            Utility.print("path:"+filepath);
+            fh = new FileHandler(filepath);
+            logger.addHandler(fh);
+            SimpleFormatter formatter = new SimpleFormatter();
+            fh.setFormatter(formatter);
+            // the following statement is used to log any messages
+            switch (level.toLowerCase()){
+                case "finest":
+                    logger.finest(message);
+                    break;
+                case "finer":
+                    logger.finer(message);
+                    break;
+                case "fine":
+                    logger.fine(message);
+                    break;
+                case "config":
+                    logger.fine(message);
+                    break;
+                case "info":
+                    logger.info(message);
+                    break;
+                case "warning":
+                    logger.warning(message);
+                    break;
+                case "severe":
+                    logger.severe(message);
+                    break;
+                default:
+                    logger.info(message);
+            }
+        } catch (SecurityException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }
