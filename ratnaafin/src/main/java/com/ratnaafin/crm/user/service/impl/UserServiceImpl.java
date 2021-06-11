@@ -1705,21 +1705,23 @@ public class UserServiceImpl implements UserService{
                         break;
                     case "pack_otp_new.proc_insert_otp_verification_sdt":
                         Utility.print(objectType+"/"+objectName);
-                        String transactionID,apiResponse;
+                        String transactionID,apiResponse,apiRequest;
                         //get inParam
                         tokenID        = (String)param.get("tokenID");
                         transactionID  = (String)param.get("transactionID");
+                        apiRequest     = (String)param.get("apiRequest");
                         apiResponse    = (String)param.get("apiResponse");
 
-                        cs = connection.prepareCall("{ call "+objectName+"(?,?,?,?)}");
+                        cs = connection.prepareCall("{ call "+objectName+"(?,?,?,?,?)}");
 
                         cs.setString(1,tokenID);
                         cs.setString(2,transactionID);
-                        cs.setString(3,apiResponse);
-                        cs.registerOutParameter(4,2005);
+                        cs.setString(3,apiRequest);
+                        cs.setString(4,apiResponse);
+                        cs.registerOutParameter(5,2005);
                         cs.execute();
 
-                        result = cs.getString(4);
+                        result = cs.getString(5);
                         outParam.put("result",result);
                         break;
                     case "pack_otp_new.proc_set_verified_otp":
@@ -1858,6 +1860,53 @@ public class UserServiceImpl implements UserService{
                         result = cs.getString(3);
                         outParam.put("result",result);
                         break;
+                    case "pack_healthcheck_common.proc_insert_msg_mail_api_log":
+                        String messageCategory=null;
+                        Utility.print(objectType+"/"+objectName);
+                        //get inParam
+                        tokenID     = (String)param.get("tokenID");
+                        requestType = (String)param.get("requestType");
+                        requestData = (String)param.get("requestData");
+                        response    = (String)param.get("responseData");
+                        transactionID = (String)param.get("transactionID");
+                        messageCategory = (String)param.get("messageCategory");
+
+                        cs = connection.prepareCall("{ call "+objectName+"(?,?,?,?,?,?,?)}");
+
+                        cs.setString(1,tokenID);
+                        cs.setString(2,requestType);
+                        cs.setString(3,requestData);
+                        cs.setString(4,response);
+                        cs.setString(5,transactionID);
+                        cs.setString(6,messageCategory);
+
+
+                        cs.registerOutParameter(7,2005);
+                        cs.execute();
+
+                        result = cs.getString(7);
+                        Utility.print("proc_output:\n"+result);
+                        outParam.put("result",result);
+                        break;
+                    case "proc_calling_db_objects":
+                        Utility.print(objectType+"/"+objectName);
+                        //get inParam
+                        JSONObject jsonReqData;
+                        String caseAction,data;
+                        caseAction     = (String)param.get("action");
+                        data           = (String)param.get("jsonReqData");
+                        jsonReqData    = new JSONObject(data);
+                        cs = connection.prepareCall("{ call "+objectName+"(?,?,?)}");
+
+                        cs.setString(1,caseAction);
+                        cs.setString(2,jsonReqData.toString());
+
+                        cs.registerOutParameter(3,2005);
+                        cs.execute();
+
+                        result = cs.getString(3);
+                        outParam.put("result",result);
+                        break;
                     default:
                         outParam.put("error","case not found:"+objectType+"-"+objectName);
                 }
@@ -1870,6 +1919,10 @@ public class UserServiceImpl implements UserService{
         }catch (SQLException e) {
             e.printStackTrace();
             outParam.put("error",e.getMessage());
+            return outParam;
+        }catch (Exception e) {
+            e.printStackTrace();
+            outParam.put("error",e.getMessage()+",Cause:"+e.getCause().getMessage());
             return outParam;
         }
     }
@@ -1988,9 +2041,15 @@ public class UserServiceImpl implements UserService{
     public void updateEquifaxAPILog(String token_id ,String req_status,String res_status, String res_data,String errorCode, String errorDesc){
         equifaxAPILogDao.updateEquifaxAPILog(token_id,req_status,res_status,res_data,new Date(),errorCode,errorDesc);
     }
+
     @Override
-    public List<EquifaxAPILog> getEquifaxPendingRecords(){
-        return equifaxAPILogDao.getEquifaxPendingRecords();
+    public List<EquifaxAPILog> findEquifaxPendingLinkRecord(){
+        return equifaxAPILogDao.findEquifaxPendingLinkRecord();
+    }
+
+    @Override
+    public void updateEqfxOTPLinkStatus(String token_id, String status,String remarks){
+        equifaxAPILogDao.updateEqfxOTPLinkStatus(token_id, status,remarks,new Date());
     }
 
     @Override
@@ -2004,13 +2063,8 @@ public class UserServiceImpl implements UserService{
     }
 
     @Override
-    public void updateOTPLinkSentStatus(String token_id,String status){
-        otpVerificationDao.updateOTPLinkSentStatus(token_id,status, new Date());
-    }
-
-    @Override
-    public void equifaxOTPLinkSentStatus(String token_id, String status){
-        equifaxAPILogDao.equifaxOTPLinkSentStatus(token_id,status,new Date());
+    public void updateOTPLinkSentStatus(String token_id,String status,String remarks){
+        otpVerificationDao.updateOTPLinkSentStatus(token_id,status, new Date(),remarks);
     }
 
     @Override
