@@ -218,7 +218,8 @@ public class Scheduler {
     //change: sending sms/email and equifax consent link to customer
     @Scheduled(fixedDelay = 60000, initialDelay = 30000)
     public  void equifaxConsentMessageScheduler(){
-        utility.generateLog("info","start: equifaxConsentMessageScheduler",logger);
+        //utility.generateLog("info","start: equifaxConsentMessageScheduler",logger);
+        String shortURL=null;
         String objectName = this.getClass().getSimpleName()+".java",errorFlag=null,errorMessage=null,errorRemarks=null;
         HashMap inParam=null,outParam=null;
 
@@ -278,7 +279,11 @@ public class Scheduler {
                 if(reqName.equals("RETAIL")){
                     //link detail <link string>
                     internalLink = internalLink.replace("<tokenID>",tokenID);
-                    messageRtl = messageRtl.replace("<link>",internalLink);
+                    shortURL = userService.getShortURL(tokenID,internalLink);
+                    if(shortURL.equals("0")){
+                        continue;
+                    }
+                    messageRtl = messageRtl.replace("<link>",shortURL);
                     Utility.print("message will be:\n"+messageRtl);
                     try {
                         if(apiURLRtl==null|| apiURLRtl.isEmpty()) {
@@ -432,7 +437,11 @@ public class Scheduler {
                 {
                     //link detail <link string>
                     internalLink = internalLink.replace("<tokenID>",tokenID);
-                    messageComm = messageComm.replace("<link>",internalLink);
+                    shortURL = userService.getShortURL(tokenID,internalLink);
+                    if(shortURL.equals("0")){
+                        continue;
+                    }
+                    messageComm = messageComm.replace("<link>",shortURL);
                     Utility.print("message will be:\n"+messageComm);
                     try {
                         if(apiURLComm==null|| apiURLComm.isEmpty()) {
@@ -589,7 +598,8 @@ public class Scheduler {
 
     @Scheduled(fixedDelay = 60000, initialDelay = 30000)
     public void smsEmailSendScheduler(){
-        utility.generateLog("info","start:smsEmailSendScheduler",logger);
+        //utility.generateLog("info","start:smsEmailSendScheduler",logger);
+        String shortURL=null;
         String objectName = this.getClass().getSimpleName()+".java",errorFlag=null,errorMessage=null,errorRemarks=null;
         HashMap inParam=null,outParam=null;
         List<OtpVerificationDtl> rows = userService.findPendingOTPLinkDetail();
@@ -597,7 +607,7 @@ public class Scheduler {
         String mobile=null,email=null,requestType=null,tokenID=null,data=null,apiActive=null,message=null,internalLink=null;
         String apiJsonReq=null,linkSentStatus = null,remarks=null;
         Utility.print("row:"+rows.size());
-        utility.generateLog("info","rows("+rows.size()+") fetch by findPendingOTPLinkDetail",logger);
+        //utility.generateLog("info","rows("+rows.size()+") fetch by findPendingOTPLinkDetail",logger);
         if(rows.size()>=0){
             for(OtpVerificationDtl otpVerificationDtl:rows){
                 requestType = otpVerificationDtl.getReq_type();
@@ -630,7 +640,11 @@ public class Scheduler {
                     sysParaMst_internal_link = userService.getParaVal("9999","9999",201);
                     internalLink = sysParaMst_internal_link.getPara_value();
                     internalLink = internalLink.replace("<tokenID>",tokenID);
-                    message = message.replace("<link>",internalLink);
+                    shortURL = userService.getShortURL(tokenID,internalLink);
+                    if(shortURL.equals("0")){
+                        continue;
+                    }
+                    message = message.replace("<link>",shortURL);
                     Utility.print("mobile message will be:\n"+message);
                     try {
                         String apiURL=null,apiKey=null,templateID=null;
@@ -809,7 +823,11 @@ public class Scheduler {
                     sysParaMst_internal_link = userService.getParaVal("9999","9999",202);
                     internalLink = sysParaMst_internal_link.getPara_value();
                     internalLink = internalLink.replace("<tokenID>",tokenID);
-                    message = message.replace("<link>",internalLink);
+                    shortURL = userService.getShortURL(tokenID,internalLink);
+                    if(shortURL.equals("0")){
+                        continue;
+                    }
+                    message = message.replace("<link>",shortURL);
                     try {
                         String apiURL=null,apiKey=null,templateID=null;
                         int configCD = 47; //Invoid: sms send API(email-verify)
