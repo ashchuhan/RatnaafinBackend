@@ -24,6 +24,7 @@ import javax.mail.Session;
 import javax.mail.Transport;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
+import javax.net.ssl.HttpsURLConnection;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -2070,5 +2071,155 @@ public class UserServiceImpl implements UserService{
     @Override
     public EquifaxAPILog findEquifaxDetailByTokenId(String tokenID){
         return equifaxAPILogDao.findEquifaxDetailByTokenId(tokenID);
+    }
+
+    @Override
+    public String getShortURL(String transactionID,String url){
+        String methodName = "getShortURL()|";
+        int configCD=52,httpStatus=0;
+        HashMap inParam,outParam;
+        String apiURL=null,apiKey=null,apiUser=null,apiResult = null,errorFlag=null,errorMessage=null,errorRemarks=null,
+                objectName= this.getClass().getSimpleName()+".java";
+        try{
+            URLConfigDto urlConfigDto = findURLDtlByID(configCD);
+            apiURL  = urlConfigDto.getUrl();
+            apiKey  = urlConfigDto.getKey();
+            apiUser = urlConfigDto.getUserid();
+            if(apiURL==null|| apiURL.isEmpty()) {
+                errorFlag = "E";
+                errorMessage = "URL not found for CODE("+configCD+")";
+                errorRemarks = methodName+errorMessage;
+                inParam = new HashMap();
+                inParam.put("error_msg",errorMessage);
+                inParam.put("remarks",errorRemarks);
+                inParam.put("obj_name",objectName);
+                inParam.put("error_flag",errorFlag);
+                outParam    =   callingDBObject("procedure","proc_insert_error_log",inParam);
+                return "0";
+            }
+            if(apiKey==null|| apiKey.isEmpty()) {
+                errorFlag = "E";
+                errorMessage = "URL key found for CODE("+configCD+")";
+                errorRemarks = methodName+errorMessage;
+                inParam = new HashMap();
+                inParam.put("error_msg",errorMessage);
+                inParam.put("remarks",errorRemarks);
+                inParam.put("obj_name",objectName);
+                inParam.put("error_flag",errorFlag);
+                outParam    =  callingDBObject("procedure","proc_insert_error_log",inParam);
+                return "0";
+            }
+            if(apiUser==null|| apiUser.isEmpty()) {
+                errorFlag = "E";
+                errorMessage = "URL userName not found for CODE("+configCD+")";
+                errorRemarks = methodName+errorMessage;
+                inParam = new HashMap();
+                inParam.put("error_msg",errorMessage);
+                inParam.put("remarks",errorRemarks);
+                inParam.put("obj_name",objectName);
+                inParam.put("error_flag",errorFlag);
+                outParam    = callingDBObject("procedure","proc_insert_error_log",inParam);
+                return "0";
+            }
+            URL obj = new URL(apiURL);
+            HttpURLConnection conn = (HttpURLConnection) obj.openConnection();
+            conn.setRequestMethod("POST");
+            conn.addRequestProperty("content-Type", "application/json");
+            conn.addRequestProperty("key",apiKey);
+            conn.addRequestProperty("secret",apiUser);
+            conn.setDoOutput(true);
+
+            JSONObject requestJson = new JSONObject();
+            String  apiJsonReq =null;
+
+            requestJson.put("url",url);
+            apiJsonReq = requestJson.toString();
+
+            Utility.print("URL shortner payload:\n"+apiJsonReq);
+            OutputStream os = conn.getOutputStream();
+            os.write(requestJson.toString().getBytes());
+            os.flush();
+            os.close();
+            //get response body of api request
+            apiResult = Utility.getURLResponse(conn);
+            httpStatus = conn.getResponseCode();
+            Utility.print("http status:"+httpStatus);
+            Utility.print("API response:"+apiResult);
+            if(httpStatus==conn.HTTP_OK){
+                /**sample response**/
+                /*{ "data": "http://v.ratnaafin.com/pJRk3LD",
+                    "code": 200,
+                    "message": "Link has been shortened"}
+                * */
+                String responseStatus = null,responseMessage=null,responseData=null;
+                try {
+                    JSONObject jsonObject = new JSONObject(apiResult);
+                    //start: read key values
+                    if(jsonObject.has("code")){
+                        responseStatus = jsonObject.getString("code");
+                    }else{
+                        responseStatus = "";
+                    }
+                    if(jsonObject.has("message")){
+                        responseMessage = jsonObject.getString("message");
+                    }
+                    if(jsonObject.has("data")){
+                        responseData = jsonObject.getString("data");
+                    }
+                    //end: read key values
+                    //insert api log
+                    inParam = new HashMap();
+                    inParam.put("tokenID",transactionID);
+                    inParam.put("requestType","SMS");
+                    inParam.put("requestData",apiJsonReq);
+                    inParam.put("responseData",apiResult);
+                    inParam.put("transactionID","");
+                    inParam.put("messageCategory","09");
+                    outParam = callingDBObject("procedure","pack_healthcheck_common.proc_insert_msg_mail_api_log",inParam);
+                    if(responseStatus.equals("200")){
+                        return  responseData;
+                    }else{
+                        return "0";
+                    }
+                }catch (JSONException e){
+                    errorFlag = "E";
+                    errorMessage = "JSONException:"+e.getMessage();
+                    errorRemarks = methodName+errorMessage;
+                    inParam = new HashMap();
+                    inParam.put("error_msg",errorMessage);
+                    inParam.put("remarks",errorRemarks);
+                    inParam.put("obj_name",objectName);
+                    inParam.put("error_flag",errorFlag);
+                    outParam    = callingDBObject("procedure","proc_insert_error_log",inParam);
+                    e.printStackTrace();
+                    return  "0";
+                }
+            }else{
+                errorFlag = "U";
+                errorMessage = "API HTTP Status:"+httpStatus;
+                errorRemarks = methodName+errorMessage;
+                inParam = new HashMap();
+                inParam.put("error_msg",errorMessage);
+                inParam.put("remarks",errorRemarks);
+                inParam.put("obj_name",objectName);
+                inParam.put("error_flag",errorFlag);
+                outParam    = callingDBObject("procedure","proc_insert_error_log",inParam);
+                return "0";
+            }
+        }catch (Exception e) {
+            e.printStackTrace();
+            Utility.print("API Calling failed:"+e.getMessage());
+            errorFlag = "E";
+            errorMessage = "Exception:"+e.getMessage();
+            errorRemarks = methodName+"Error while calling API";
+            inParam = new HashMap();
+            inParam.put("error_msg",errorMessage);
+            inParam.put("remarks",errorRemarks);
+            inParam.put("obj_name",objectName);
+            inParam.put("error_flag",errorFlag);
+            outParam    = callingDBObject("procedure","proc_insert_error_log",inParam);
+            e.printStackTrace();
+            return "0";
+        }
     }
 }

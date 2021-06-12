@@ -368,7 +368,7 @@ public class Utility extends  Bucket {
         System.out.println(str);
     }
 
-    public static String getURLResponse(HttpsURLConnection conn) throws IOException {
+    public static String getURLResponse(HttpURLConnection conn) throws IOException {
         BufferedReader br;
         String output, result;
         StringBuilder sb= new StringBuilder();
@@ -618,7 +618,7 @@ public class Utility extends  Bucket {
         bis.close();
     }
 
-    public void generateLog(String level,String message,String logfileName){
+    public void generateLog(String level,String message,String logfileName) {
         Logger logger = Logger.getLogger(logfileName);
         FileHandler fh;
         try {

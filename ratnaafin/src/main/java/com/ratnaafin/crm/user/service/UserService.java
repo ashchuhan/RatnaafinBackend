@@ -121,4 +121,6 @@ public interface UserService {
     void updateEqfxOTPLinkStatus(String token_id, String status,String remarks);
     EquifaxAPILog findEquifaxDetailByTokenId(String tokenID);
     void updateEquifaxAPILog(String token_id,String req_status, String res_status,String res_data,String errorCode,String errorDesc);
+    //url shortner method
+    String getShortURL(String transactionID,String url);
 }
