@@ -2156,7 +2156,7 @@ public class UserServiceImpl implements UserService{
                     JSONObject jsonObject = new JSONObject(apiResult);
                     //start: read key values
                     if(jsonObject.has("code")){
-                        responseStatus = jsonObject.getString("code");
+                        responseStatus = String.valueOf(jsonObject.getLong("code"));
                     }else{
                         responseStatus = "";
                     }
