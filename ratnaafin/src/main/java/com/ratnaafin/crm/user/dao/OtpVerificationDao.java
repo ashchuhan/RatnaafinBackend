@@ -14,7 +14,7 @@ public interface OtpVerificationDao extends CrudRepository<OtpVerificationDtl,St
     @Query("select u from otp_verification_dtl u where u.token_id = ?1")
     OtpVerificationDtl findOTPDetailByTokenID(String tokenID);
 
-    @Query("select u from otp_verification_dtl u where u.link_sent_status = 'P' and u.req_type <> 'EQFX_SMS'")
+    @Query("select u from otp_verification_dtl u where u.link_sent_status = 'P' and u.verify = 'N' and u.req_type <> 'EQFX_SMS'")
     List<OtpVerificationDtl> findPendingOTPLinkDetail();
 
     @Modifying
