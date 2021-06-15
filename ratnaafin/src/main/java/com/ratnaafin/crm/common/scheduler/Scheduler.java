@@ -70,11 +70,12 @@ public class Scheduler {
                     enteredBy = jsonObject.getString("enteredBy");
                     if (leadId > 0  && serialNo > 0){
                         try {
-                            page.navigate("https://ratnaafin.aiplservices.com/middleware/"+leadId);
+                            page.navigate("https://ratnaafin.aiplservices.com/middleware/lead/"+leadId);
                             page.waitForTimeout(29000);
                             Page.PdfOptions options = new Page.PdfOptions();
                             options.format="A4";
                             options.displayHeaderFooter = true;
+                            options.printBackground = true;
                             //options.withDisplayHeaderFooter(true);
                             //options.withPath(Paths.get("page.pdf"));
                             String fileName = CAM_FILE_PATH+userService.getuniqueId()+"_Lead_"+leadId+"_CAM.pdf";
@@ -85,7 +86,6 @@ public class Scheduler {
                             //System.out.println("File Path:"+filepath.getAbsolutePath());
                             options.path = Paths.get(filepath.getAbsolutePath());
                             page.pdf(options);
-
                             fileInputStream = new FileInputStream(filepath);
                             Blob blob = null;
                             Utility utility = new Utility();
