@@ -9,7 +9,7 @@ import java.util.Date;
 import java.util.List;
 
 public interface EquifaxAPILogDao extends CrudRepository<EquifaxAPILog,String> {
-    @Query("select u from Equifax_api_log_new u where u.link_sent_status='P'")
+    @Query("select u from Equifax_api_log_new u where u.link_sent_status='P' and u.otp_verify = 'N'")
     List<EquifaxAPILog> findEquifaxPendingLinkRecord();
 
     @Query("select u from Equifax_api_log_new u where u.token_id = ?1")

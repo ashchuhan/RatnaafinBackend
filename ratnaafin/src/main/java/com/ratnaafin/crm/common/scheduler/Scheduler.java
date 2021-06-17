@@ -346,15 +346,16 @@ public class Scheduler {
                             apiResult = Utility.getURLResponse(conn);
                             httpStatus = conn.getResponseCode();
                             Utility.print("API response:"+apiResult);
+                            String responseStatus = null,responseMessage=null,responseTransactionID=null;
+                            JSONObject jsonObject = null;
                             if(httpStatus==conn.HTTP_OK){
-                                String responseStatus = null,responseMessage=null,responseTransactionID=null;
                                 try {
-                                    JSONObject jsonObject = new JSONObject(apiResult);
+                                    jsonObject = new JSONObject(apiResult);
                                     //start: read key values
                                     if(jsonObject.has("status")){
                                         responseStatus = jsonObject.getString("status");
                                     }else{
-                                        responseStatus = "Status Not found";
+                                        responseStatus = "status_not_found";
                                     }
                                     if(jsonObject.has("message")){
                                         responseMessage = jsonObject.getString("message");
@@ -363,16 +364,6 @@ public class Scheduler {
                                         responseTransactionID = jsonObject.getString("transactionId");
                                     }
                                     //end: read key values
-                                    //insert api log
-                                    inParam = new HashMap();
-                                    inParam.put("tokenID",tokenID);
-                                    inParam.put("requestType",reqName);
-                                    inParam.put("requestData",apiJsonReq);
-                                    inParam.put("responseData",apiResult);
-                                    inParam.put("transactionID",responseTransactionID);
-                                    inParam.put("messageCategory","03");
-                                    outParam = userService.callingDBObject("procedure","pack_healthcheck_common.proc_insert_msg_mail_api_log",inParam);
-
                                     if (responseStatus.equals("200") && responseMessage.equalsIgnoreCase("success")){
                                         linkSentStatus = "S";
                                     }else{
@@ -395,17 +386,31 @@ public class Scheduler {
                                     continue;
                                 }
                             }else{
-                                errorFlag = "U";
-                                errorMessage = "API HTTP Status:"+httpStatus;
-                                errorRemarks = errorMessage;
-                                inParam = new HashMap();
-                                inParam.put("error_msg",errorMessage);
-                                inParam.put("remarks",errorRemarks);
-                                inParam.put("obj_name",objectName);
-                                inParam.put("error_flag",errorFlag);
-                                outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
-                                continue;
+                                try{
+                                    jsonObject = new JSONObject(apiResult);
+                                    //start: read key values
+                                    if(jsonObject.has("status")){
+                                        responseStatus = jsonObject.getString("status");
+                                    }
+                                    if(jsonObject.has("message")){
+                                        responseMessage = jsonObject.getString("message");
+                                    }
+                                }catch (Exception e){
+                                    responseMessage = "";
+                                }
+                                //Update "otp_verification_dtl"
+                                remarks = responseMessage==null||responseMessage.isEmpty()?apiResult.substring(0,3999):responseMessage;
+                                userService.updateEqfxOTPLinkStatus(tokenID,"F",remarks);
                             }
+                            //insert api log
+                            inParam = new HashMap();
+                            inParam.put("tokenID",tokenID);
+                            inParam.put("requestType",reqName);
+                            inParam.put("requestData",apiJsonReq);
+                            inParam.put("responseData",apiResult);
+                            inParam.put("transactionID",responseTransactionID);
+                            inParam.put("messageCategory","03");
+                            outParam = userService.callingDBObject("procedure","pack_healthcheck_common.proc_insert_msg_mail_api_log",inParam);
                         }catch (Exception e) {
                             Utility.print("API Calling failed:"+e.getMessage());
                             errorFlag = "E";
@@ -504,10 +509,11 @@ public class Scheduler {
                             apiResult = Utility.getURLResponse(conn);
                             httpStatus = conn.getResponseCode();
                             Utility.print("API response:"+apiResult);
+                            String responseStatus = null,responseMessage=null,responseTransactionID=null;
+                            JSONObject jsonObject = null;
                             if(httpStatus==conn.HTTP_OK){
-                                String responseStatus = null,responseMessage=null,responseTransactionID=null;
                                 try {
-                                    JSONObject jsonObject = new JSONObject(apiResult);
+                                    jsonObject = new JSONObject(apiResult);
                                     //start: read key values
                                     if(jsonObject.has("status")){
                                         responseStatus = jsonObject.getString("status");
@@ -521,15 +527,6 @@ public class Scheduler {
                                         responseTransactionID = jsonObject.getString("transactionId");
                                     }
                                     //end: read key values
-                                    //insert api log
-                                    inParam = new HashMap();
-                                    inParam.put("tokenID",tokenID);
-                                    inParam.put("requestType",reqName);
-                                    inParam.put("requestData",apiJsonReq);
-                                    inParam.put("responseData",apiResult);
-                                    inParam.put("transactionID",responseTransactionID);
-                                    inParam.put("messageCategory","04");
-                                    outParam = userService.callingDBObject("procedure","pack_healthcheck_common.proc_insert_msg_mail_api_log",inParam);
 
                                     if (responseStatus.equals("200") && responseMessage.equalsIgnoreCase("success")){
                                         linkSentStatus = "S";
@@ -553,17 +550,32 @@ public class Scheduler {
                                     continue;
                                 }
                             }else{
-                                errorFlag = "U";
-                                errorMessage = "API HTTP Status:"+httpStatus;
-                                errorRemarks = errorMessage;
-                                inParam = new HashMap();
-                                inParam.put("error_msg",errorMessage);
-                                inParam.put("remarks",errorRemarks);
-                                inParam.put("obj_name",objectName);
-                                inParam.put("error_flag",errorFlag);
-                                outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
-                                continue;
+                                try{
+                                    jsonObject = new JSONObject(apiResult);
+                                    //start: read key values
+                                    if(jsonObject.has("status")){
+                                        responseStatus = jsonObject.getString("status");
+                                    }
+                                    if(jsonObject.has("message")){
+                                        responseMessage = jsonObject.getString("message");
+                                    }
+                                }catch (Exception e){
+                                    responseMessage = "";
+                                }
+                                //Update "otp_verification_dtl"
+                                remarks = responseMessage==null||responseMessage.isEmpty()?apiResult.substring(0,3999):responseMessage;
+                                userService.updateEqfxOTPLinkStatus(tokenID,"F",remarks);
                             }
+                            //insert api log
+                            inParam = new HashMap();
+                            inParam.put("tokenID",tokenID);
+                            inParam.put("requestType",reqName);
+                            inParam.put("requestData",apiJsonReq);
+                            inParam.put("responseData",apiResult);
+                            inParam.put("transactionID",responseTransactionID);
+                            inParam.put("messageCategory","04");
+                            outParam = userService.callingDBObject("procedure","pack_healthcheck_common.proc_insert_msg_mail_api_log",inParam);
+
                         }catch (Exception e) {
                             Utility.print("API Calling failed:"+e.getMessage());
                             errorFlag = "E";
@@ -714,15 +726,16 @@ public class Scheduler {
                             apiResult = Utility.getURLResponse(conn);
                             httpStatus = conn.getResponseCode();
                             Utility.print("API response:"+apiResult);
+                            String responseStatus = null,responseMessage=null,responseTransactionID=null;
+                            JSONObject jsonObject = null;
                             if(httpStatus==conn.HTTP_OK){
-                                String responseStatus = null,responseMessage=null,responseTransactionID=null;
                                 try {
-                                    JSONObject jsonObject = new JSONObject(apiResult);
+                                    jsonObject = new JSONObject(apiResult);
                                     //start: read key values
                                     if(jsonObject.has("status")){
                                         responseStatus = jsonObject.getString("status");
                                     }else{
-                                        responseStatus = "Status Not found";
+                                        responseStatus = "status_not_found";
                                     }
                                     if(jsonObject.has("message")){
                                         responseMessage = jsonObject.getString("message");
@@ -731,17 +744,6 @@ public class Scheduler {
                                         responseTransactionID = jsonObject.getString("transactionId");
                                     }
                                     //end: read key values
-                                    //insert api log
-                                    inParam = new HashMap();
-                                    inParam.put("tokenID",tokenID);
-                                    inParam.put("requestType",requestType);
-                                    inParam.put("requestData",apiJsonReq);
-                                    inParam.put("responseData",apiResult);
-                                    inParam.put("transactionID",responseTransactionID);
-                                    inParam.put("messageCategory","01");
-
-                                    outParam = userService.callingDBObject("procedure","pack_healthcheck_common.proc_insert_msg_mail_api_log",inParam);
-
                                     if (responseStatus.equals("200") && responseMessage.equalsIgnoreCase("success")){
                                         linkSentStatus = "S";
                                     }else{
@@ -764,17 +766,32 @@ public class Scheduler {
                                     continue;
                                 }
                             }else{
-                                errorFlag = "U";
-                                errorMessage = "SMS Send API HTTP Status:"+httpStatus;
-                                errorRemarks = errorMessage;
-                                inParam = new HashMap();
-                                inParam.put("error_msg",errorMessage);
-                                inParam.put("remarks",errorRemarks);
-                                inParam.put("obj_name",objectName);
-                                inParam.put("error_flag",errorFlag);
-                                outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
-                                continue;
+                                try{
+                                    jsonObject = new JSONObject(apiResult);
+                                    //start: read key values
+                                    if(jsonObject.has("status")){
+                                        responseStatus = jsonObject.getString("status");
+                                    }
+                                    if(jsonObject.has("message")){
+                                        responseMessage = jsonObject.getString("message");
+                                    }
+                                }catch (Exception e){
+                                    responseMessage = "";
+                                }
+                                remarks = responseMessage==null||responseMessage.isEmpty()?apiResult.substring(0,3999):responseMessage;
+                                //Update "otp_verification_dtl"
+                                userService.updateOTPLinkSentStatus(tokenID,"F",remarks);
                             }
+                            //insert api log
+                            inParam = new HashMap();
+                            inParam.put("tokenID",tokenID);
+                            inParam.put("requestType",requestType);
+                            inParam.put("requestData",apiJsonReq);
+                            inParam.put("responseData",apiResult);
+                            inParam.put("transactionID",responseTransactionID);
+                            inParam.put("messageCategory","01");
+                            outParam = userService.callingDBObject("procedure","pack_healthcheck_common.proc_insert_msg_mail_api_log",inParam);
+
                         }catch (Exception e) {
                             Utility.print("API Calling failed:"+e.getMessage());
                             errorFlag = "E";
@@ -896,10 +913,11 @@ public class Scheduler {
                             apiResult = Utility.getURLResponse(conn);
                             httpStatus = conn.getResponseCode();
                             Utility.print("API response:"+apiResult);
+                            JSONObject jsonObject = null;
+                            String responseStatus = null,responseMessage=null,responseTransactionID=null;
                             if(httpStatus==conn.HTTP_OK){
-                                String responseStatus = null,responseMessage=null,responseTransactionID=null;
                                 try {
-                                    JSONObject jsonObject = new JSONObject(apiResult);
+                                    jsonObject = new JSONObject(apiResult);
                                     //start: read key values
                                     if(jsonObject.has("status")){
                                         responseStatus = jsonObject.getString("status");
@@ -913,16 +931,6 @@ public class Scheduler {
                                         responseTransactionID = jsonObject.getString("transactionId");
                                     }
                                     //end: read key values
-                                    //insert api log
-                                    inParam = new HashMap();
-                                    inParam.put("tokenID",tokenID);
-                                    inParam.put("requestType",requestType);
-                                    inParam.put("requestData",apiJsonReq);
-                                    inParam.put("responseData",apiResult);
-                                    inParam.put("transactionID",responseTransactionID);
-                                    inParam.put("messageCategory","02");
-                                    outParam = userService.callingDBObject("procedure","pack_healthcheck_common.proc_insert_msg_mail_api_log",inParam);
-
                                     if (responseStatus.equals("200") && responseMessage.equalsIgnoreCase("success")){
                                         linkSentStatus = "S";
                                     }else{
@@ -945,17 +953,32 @@ public class Scheduler {
                                     continue;
                                 }
                             }else{
-                                errorFlag = "U";
-                                errorMessage = "Email Send API HTTP Status:"+httpStatus;
-                                errorRemarks = requestType+"|"+errorMessage;
-                                inParam = new HashMap();
-                                inParam.put("error_msg",errorMessage);
-                                inParam.put("remarks",errorRemarks);
-                                inParam.put("obj_name",objectName);
-                                inParam.put("error_flag",errorFlag);
-                                outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
-                                continue;
+                                try{
+                                    jsonObject = new JSONObject(apiResult);
+                                    //start: read key values
+                                    if(jsonObject.has("status")){
+                                        responseStatus = jsonObject.getString("status");
+                                    }
+                                    if(jsonObject.has("message")){
+                                        responseMessage = jsonObject.getString("message");
+                                    }
+                                }catch (Exception e){
+                                    responseMessage = "";
+                                }
+                                remarks = responseMessage==null||responseMessage.isEmpty()?apiResult.substring(0,3999):responseMessage;
+                                //Update "otp_verification_dtl"
+                                userService.updateOTPLinkSentStatus(tokenID,"F",remarks);
                             }
+                            //insert api log
+                            inParam = new HashMap();
+                            inParam.put("tokenID",tokenID);
+                            inParam.put("requestType",requestType);
+                            inParam.put("requestData",apiJsonReq);
+                            inParam.put("responseData",apiResult);
+                            inParam.put("transactionID",responseTransactionID);
+                            inParam.put("messageCategory","02");
+                            outParam = userService.callingDBObject("procedure","pack_healthcheck_common.proc_insert_msg_mail_api_log",inParam);
+
                         }catch (Exception e) {
                             Utility.print("API Calling failed:"+e.getMessage());
                             errorFlag = "E";
