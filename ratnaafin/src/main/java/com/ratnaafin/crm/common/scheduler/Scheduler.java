@@ -54,7 +54,7 @@ public class Scheduler {
         String JsonData = null;
         JsonData = funcGetIntiatedRequestData();
         if (JsonData != null) {
-            long leadId , serialNo;
+            long leadId , serialNo, amountIn;
             String enteredBy = null;
             try {
                 BrowserContext context;
@@ -68,9 +68,10 @@ public class Scheduler {
                     leadId = jsonObject.getLong("refID");
                     serialNo = jsonObject.getLong("serialNo");
                     enteredBy = jsonObject.getString("enteredBy");
+                    amountIn = jsonObject.getLong("amountIn");
                     if (leadId > 0  && serialNo > 0){
                         try {
-                            page.navigate("https://ratnaafin.aiplservices.com/middleware/lead/"+leadId);
+                            page.navigate("http://10.55.6.64:3000/middleware/lead/"+leadId+"?amountIn="+amountIn);
                             page.waitForTimeout(29000);
                             Page.PdfOptions options = new Page.PdfOptions();
                             options.format="A4";
