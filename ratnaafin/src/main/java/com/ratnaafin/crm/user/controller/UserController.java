@@ -1389,21 +1389,29 @@ public class UserController {
             if(periodFrom == null || periodFrom.isEmpty() ){
                 return userService.getJsonError("-99","Request Error!","periodFrom Not Found.","periodFrom Not Found.","99",channel,action,requestdata,userName,module,"U");
             }else{
-                //actual get : 2021-04-31T18:30:00.000Z
+                /**old**/
+                    //actual get : 2021-04-31T18:30:00.000Z
+                    //need to set: 042021 [mmYYYY]
+                    //2020-12-31T18:30:00.000Z
+                    //toYear  = periodFrom.substring(0,4);
+                    //toMonth = periodFrom.substring(5,7);
+                    //periodFrom  = toMonth+toYear;
+                /**old**/
+                //new actual get: DY MON DD YYYY HH24:MI:SS" +0530"
                 //need to set: 042021 [mmYYYY]
-                //2020-12-31T18:30:00.000Z
-                toYear  = periodFrom.substring(0,4);
-                toMonth = periodFrom.substring(5,7);
-                periodFrom  = toMonth+toYear;
+                periodFrom = userService.getDateFormattedString(periodFrom,"MMyyyy");
             }
             if(periodTo == null || periodTo.isEmpty() ){
                 return userService.getJsonError("-99","Request Error!","periodTo Not Found.","periodTo Not Found.","99",channel,action,requestdata,userName,module,"U");
             }else {
-                //actual get : 2021-04-31T18:30:00.000Z
-                //need to set: 042021 [mmYYYY]
-                toYear  = periodTo.substring(0,4);
-                toMonth = periodTo.substring(5,7);
-                periodTo = toMonth+toYear;
+                /**old**/
+                    //actual get : 2021-04-31T18:30:00.000Z
+                    //need to set: 042021 [mmYYYY]
+                    //toYear  = periodTo.substring(0,4);
+                    //toMonth = periodTo.substring(5,7);
+                    //periodTo = toMonth+toYear;
+                /**old**/
+                periodTo = userService.getDateFormattedString(periodTo,"MMyyyy");
             }
             if(entityType.indexOf("L")<0 && entityType.indexOf("I")<0){
                 return userService.getJsonError("-99","Request Error!","Invalid entityType.","Invalid entityType.","99",channel,action,requestdata,userName,module,"U");
@@ -2957,8 +2965,17 @@ public class UserController {
                     if(yearMonthFrom==null || yearMonthTo==null){
                         return userService.getJsonError("-99","Request Error!","Required Parameter Not Found: YearMonthFrom or YearMonthTo.","Required Parameter Not Found: YearMonthFrom or YearMonthTo.","99",channel,action,requestdata,userName,module,"U");
                     }else{
-                        yearMonthFromFormatted = yearMonthFrom.substring(0,7);
-                        yearMonthToFormatted   = yearMonthTo.substring(0,7);
+                        /**old**/
+                        //yearMonthFromFormatted = yearMonthFrom.substring(0,7);
+                        //yearMonthToFormatted   = yearMonthTo.substring(0,7);
+                        /**old**/
+                        /*dateFormat changed from front*/
+                        yearMonthFromFormatted = userService.getDateFormattedString(yearMonthFrom,sendDatePattern);
+                        yearMonthToFormatted   = userService.getDateFormattedString(yearMonthTo,sendDatePattern);
+                        Utility.print("yearMonthFrom:"+yearMonthFrom);
+                        Utility.print("yearMonthTo:"+yearMonthTo);
+                        Utility.print("yearMonthFromFormatted:"+yearMonthFromFormatted);
+                        Utility.print("yearMonthToFormatted:"+yearMonthToFormatted);
                     }
                     Utility.print("stage:11");
                     if(!yearMonthFromFormatted.matches("([0-9]{4})-[0-9]{2}") || !yearMonthToFormatted.matches("([0-9]{4})-[0-9]{2}")){
@@ -2977,12 +2994,17 @@ public class UserController {
                             }else{
                                 rangeFrom = Long.parseLong(yearMonthFromFormatted.substring(5));
                                 rangeTo   = Long.parseLong(yearMonthToFormatted.substring(5));
+                                Utility.print("monthRange:"+monthRange);
+                                Utility.print("uptoYear:"+uptoYear);
                                 if(monthRange == uptoYear){
-                                    monthRange = (rangeTo+12) - rangeFrom + 1;
+                                    Utility.print("monthRange:"+monthRange);
+                                    Utility.print("monthRange:"+monthRange);
                                 }else{
                                     monthRange = rangeTo - rangeFrom + 1;
                                     //"Out of date Range, valid range is "+allowedRange+" month(s).","Expected month range <="+allowedRange+", actual got "+monthRange
                                 }
+                                Utility.print("monthRange:"+monthRange);
+                                Utility.print("uptoYear:"+uptoYear);
                                 if(monthRange>allowedRange){
                                     return userService.getJsonError("-99","Request Error!","Out of date Range, valid range is "+allowedRange+" month(s).","Expected month range <="+allowedRange+", actual got "+monthRange,"99",channel,action,requestdata,userName,module,"U");
                                 }

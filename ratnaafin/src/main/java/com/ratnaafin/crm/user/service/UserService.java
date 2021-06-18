@@ -123,4 +123,6 @@ public interface UserService {
     void updateEquifaxAPILog(String token_id,String req_status, String res_status,String res_data,String errorCode,String errorDesc);
     //url shortner method
     String getShortURL(String transactionID,String url);
+    //get formatted string from date string
+    String getDateFormattedString(String dateStr/*date string*/,String pattern/*String return pattern*/);
 }
