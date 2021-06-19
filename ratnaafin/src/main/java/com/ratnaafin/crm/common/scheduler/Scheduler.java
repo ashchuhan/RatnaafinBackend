@@ -71,7 +71,7 @@ public class Scheduler {
                     amountIn = jsonObject.getLong("amountIn");
                     if (leadId > 0  && serialNo > 0){
                         try {
-                            page.navigate("http://10.55.6.64:3000/middleware/lead/"+leadId+"?amountIn="+amountIn);
+                            page.navigate("https://ratnaafin.aiplservices.com/middleware/lead/"+leadId+"?amountIn="+amountIn);
                             page.waitForTimeout(29000);
                             Page.PdfOptions options = new Page.PdfOptions();
                             options.format="A4";
