@@ -884,7 +884,7 @@ public class RatnaafinApplication {
 						String lstatus = null;
 						try {
 							JSONObject jsonObject = new JSONObject(result.getBody());
-							if (otp.equals("000000"))
+							if (otp.equals("00000"))
 							{
 								jsonObject2.put("status", "0");
 								jsonObject1.put("message", "OTP Verified..");
@@ -2070,7 +2070,7 @@ public class RatnaafinApplication {
 							jsonObject2.put("serviceStatus", status);
 							jsonObject2.put("status","99");
 							jsonObject2.put("error_data",jsonObject1);*/
-							if (otp.equals("000000")) {
+							if (otp.equals("00000")) {
 								jsonObject2.put("status", "0");
 								jsonObject1.put("message", "OTP Verified..");
 								jsonObject2.put("response_data", jsonObject1);
@@ -3924,7 +3924,7 @@ public class RatnaafinApplication {
 
 		try {
 			if(devOTP.equals("Y")){
-				if(enteredOTP.equals("000000")){
+				if(enteredOTP.equals("00000")){
 					inParam.put("tokenID", tokenID);
 					inParam.put("requestType","EMAIL");
 					inParam.put("mobileNo","");
@@ -4138,7 +4138,7 @@ public class RatnaafinApplication {
 
 		try {
 			if(devOTP.equals("Y")){
-				if(enteredOTP.equals("000000")){
+				if(enteredOTP.equals("00000")){
 					inParam.put("tokenID", tokenID);
 					inParam.put("requestType",reqType);
 					inParam.put("mobileNo",mobile);
@@ -4342,7 +4342,7 @@ public class RatnaafinApplication {
 
 		try {
 			if(devOTP.equals("Y")){
-				if(enteredOTP.equals("000000")){
+				if(enteredOTP.equals("00000")){
 					inParam.put("tokenID", tokenID);
 					inParam.put("requestType",reqType);
 					inParam.put("mobileNo",mobile);
