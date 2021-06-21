@@ -4312,7 +4312,7 @@ public class UserController {
 
                     if(result>0){
                         return userService.getJsonError("-99", "Upload process declined.",
-                                "Maybe Documents are in process, Please try after some time",
+                                "Documents are in process, Please try after some time",
                                 "Number of Processing Documents:"+result,
                                 "99", channel, action, requestData, userName, module, "U");
                     }
