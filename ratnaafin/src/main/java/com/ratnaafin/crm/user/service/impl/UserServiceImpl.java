@@ -1,6 +1,7 @@
 package com.ratnaafin.crm.user.service.impl;
 
 import java.sql.*;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -2221,5 +2222,32 @@ public class UserServiceImpl implements UserService{
             e.printStackTrace();
             return "0";
         }
+    }
+
+    public String getDateFormattedString(String dateStr/*date string*/,String pattern/*String return pattern*/) {
+        //keep note: dateStr is always in format: Sat Jan 16 2021 15:26:49 GMT+0530
+        String extractPattern = "EEE MMM dd yyyy";
+        SimpleDateFormat extractFormat = new SimpleDateFormat(extractPattern);
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
+        String returnDateStr=null;
+        try {
+            switch (pattern){
+                case "MMyyyy":
+                case "yyyy-MM":
+                case "yyyy":
+                    String splitDate = dateStr.substring(0,15);
+                    System.out.println("splitDate:"+splitDate);
+                    Date dt = extractFormat.parse(splitDate);
+                    System.out.println("return date:"+dt);
+
+                    returnDateStr = simpleDateFormat.format(dt);
+                    System.out.println("returnDateStr: "+returnDateStr);
+                    break;
+
+            }
+        }catch (ParseException e){
+            e.printStackTrace();
+        }
+        return  returnDateStr;
     }
 }
