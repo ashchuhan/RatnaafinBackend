@@ -125,4 +125,10 @@ public interface UserService {
     String getShortURL(String transactionID,String url);
     //get formatted string from date string
     String getDateFormattedString(String dateStr/*date string*/,String pattern/*String return pattern*/);
+    String getLoginUserID(String userName);
+    //on date:24/06/2021
+    void saveApiWebhook(ApiWebhookActivity apiWebhookActivity);
+    List<ApiWebhookActivity> findWebhookProcess();
+    void updateWebhookProcess(Long tranCd,String processStatus,String processResponse,String webhookFlag,String remarks);
+    List<PerfiosReqResDtl> findPendingDocumentProcess();
 }
