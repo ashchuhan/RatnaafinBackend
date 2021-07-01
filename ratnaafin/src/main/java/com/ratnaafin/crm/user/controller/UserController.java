@@ -9,6 +9,7 @@ import com.ratnaafin.crm.user.dto.URLConfigDto;
 import com.ratnaafin.crm.user.dto.UniqueIDDtlDto;
 import com.ratnaafin.crm.user.model.*;
 import com.ratnaafin.crm.user.service.UserService;
+import com.ratnaafin.crm.user.service.impl.UserServiceImpl;
 import org.apache.commons.codec.binary.Base64;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -67,6 +68,7 @@ public class UserController {
     private String g_err_dtl = null;
     public static String gs_user = null;
     private String g_application = "los";
+    private String className = this.getClass().getSimpleName();
 
     @RequestMapping(method = RequestMethod.POST, value = "/{module}/{moduleCategory}/{action}/{event}/{subevent}/{subevent1}", produces = {
             "application/json", "application/json" })
@@ -75,7 +77,7 @@ public class UserController {
                                       @PathVariable(name = "event") String event, @PathVariable(name = "subevent") String subEvent,
                                       @PathVariable(name = "subevent1") String subEvent1, @RequestBody String requestData,
                                       OAuth2Authentication authentication) {
-        String userName = "null", result = null;
+        String userName = "null", result;
         User user = (User) authentication.getUserAuthentication().getPrincipal();
         userName = user.getUsername();
         module = module.toLowerCase();
@@ -425,6 +427,7 @@ public class UserController {
         moduleCategory = moduleCategory.toLowerCase();
         action = action.toLowerCase();
         event = event.toLowerCase();
+
         switch (module+"/"+moduleCategory+"/"+action+"/"+event)
         {
             case "lead/external/gstinfo/initiate":
@@ -955,7 +958,7 @@ public class UserController {
         jsonObjectReq = new JSONObject();
         jsonObject2 = new JSONObject();
         HashMap  outParam= new HashMap(), inParam = new HashMap();
-        String data = null;
+        String data = null,loginUserId = userService.getLoginUserID(userName);
         String channel = null,gstNumber=null,result;
         String      patterndate = "yyyyMMdd";
         String      patterntime = "HHmmssSSS";
@@ -1053,6 +1056,8 @@ public class UserController {
         perfiosReqResDtl.setRequest_type("GST_INFO");
         perfiosReqResDtl.setInitiated_req(requestdata);
         perfiosReqResDtl.setEntity_type(entityType);
+        perfiosReqResDtl.setEntered_by(loginUserId);
+        perfiosReqResDtl.setLast_entered_by(loginUserId);
 
 
         String requestjson = "{\"clientTransactionId\":\""+urlConfigDto.getKey()+"\",\"gstNumbers\":[\""+gstNumber+"\"],\"transactionCompleteUrl\":\""+completeURL+"\"}";
@@ -1214,11 +1219,13 @@ public class UserController {
     }
 
     public String gstInfoRetrieve(String ls_transaction_id, int urlID, String ls_webhookres) {
+        Utility utility = new Utility();
         String ls_download_status = null;
         String ls_action = "gstinfoRetrieve", ls_channel = "W";
-        String lstatus = null, ls_url = null;
+        String lstatus = null, ls_url = null,processResponse=utility.getWebhookProcessStructure();
         URLConfigDto urlConfigDto = userService.findURLDtlByID(urlID);
-
+        //processResponse structure
+        String processStatus="success",processLoc=className+"/gstInfoRetrieve()",processTitle="",processDesc="";
         ResponseEntity<String> result = null;
         try {
             if (!urlConfigDto.getUserid().isEmpty()) {
@@ -1234,7 +1241,6 @@ public class UserController {
                     Utility.print("2. API call Status:" + lstatus);
                     if (result.getStatusCode().equals(HttpStatus.OK)) {
                         Utility.print("3. API status OK");
-                        Utility utility = new Utility();
                         Blob xlsFileData = null, zipFileData = null;
                         String jsonFileData = null;
                         ls_download_status = "P";
@@ -1256,7 +1262,6 @@ public class UserController {
                                 ls_download_status = "S";
                             }
                             utility.deleteFile();
-
                             Utility.print("9. saving file data: for tranID: " + ls_transaction_id);
                             userService.updatePerfiosWebhookStatus(ls_transaction_id, lstatus, "S", ls_webhookres,
                                     zipFileData, xlsFileData, jsonFileData, ls_download_status, "SUCCESS");
@@ -1264,38 +1269,61 @@ public class UserController {
                             System.out.println("Result : MalformedURLException");
                             userService.getJsonError("99", "Error: MalformedURLException.", g_error_msg, e.getMessage(),
                                     "-99", ls_channel, ls_action, ls_webhookres, null, null, "E");
+                            processStatus = "failed";
+                            processTitle  = "MalformedURLException";
+                            processDesc   = "(A)url:"+ls_url+"|error:"+e.getMessage();
                         } catch (IOException e) {
                             System.out.println("Result : IOException");
                             userService.getJsonError("99", "Error: IOException.", g_error_msg, e.getMessage(), "-99",
                                     ls_channel, ls_action, ls_webhookres, null, null, "E");
+                            processStatus = "failed";
+                            processTitle  = "IOException";
+                            processDesc   = "(B)url:"+ls_url+"|error:"+e.getMessage();
                         } catch (Exception e) {
                             System.out.println("Result : Exception");
                             userService.getJsonError("99", "Error: Exception.", g_error_msg, e.getMessage(), "-99",
                                     ls_channel, ls_action, ls_webhookres, null, null, "E");
+                            processStatus = "failed";
+                            processTitle  = "Exception";
+                            processDesc   = "(C)url:"+ls_url+"|error:"+e.getMessage();
                         }
-                    } else {
+                    }else{
                         userService.updatePerfiosWebhookStatus(ls_transaction_id, lstatus, "F", ls_webhookres, null,
-                                null, null, "F", "RETRIEVE TIME ERROR");
+                                null, null, "F", "RETRIEVE TIME ERROR/fetch-url:"+ls_url);
+                        processStatus = "failed";
+                        processTitle  = "Response Status:"+result.getStatusCode();
+                        processDesc   = "(D)url:"+ls_url;
                     }
-                } catch (Exception e) {
-
+                }catch (Exception e) {
                     userService.getJsonError("99", "Error: IOException.", g_error_msg, e.getMessage(), "-99",
                             ls_channel, ls_action, ls_webhookres, null, null, "E");
-                    // e.printStackTrace(); //sa
+                    processStatus = "failed";
+                    processTitle  = "Exception";
+                    processDesc   = "(E)url:"+ls_url+"|error:"+e.getMessage();
                 }
-            } else {
+            }else{
                 userService.getJsonError("-99", "URL Configuration Not Found.", g_error_msg,
                         "URL Configuration Not Found.", "99", "W", ls_action, ls_webhookres, null, null, "U");
+                processStatus = "failed";
+                processTitle  = "URL Configuration Not Found";
+                processDesc   = "(F)urlId:"+urlID;
             }
-        } catch (Exception e) {
+        }catch (Exception e){
             userService.getJsonError("-99", "Error: Exception", g_error_msg, e.getMessage(), "99", "W", ls_action,
                     ls_webhookres, null, null, "E");
-            e.printStackTrace();
+            processStatus = "failed";
+            processTitle  = "Exception";
+            processDesc   = "(G)url:"+ls_url+"|error:"+e.getMessage();
         }
-        if (ls_download_status == "S") {
-            return "TRUE";
-        } else {
-            return "FALSE";
+        if(processStatus.equalsIgnoreCase("failed")){
+            processResponse = processResponse.replace("<status>",processStatus);
+            processResponse = processResponse.replace("<location>",processLoc);
+            processResponse = processResponse.replace("<title>",processTitle);
+            processResponse = processResponse.replace("<desc>",processDesc);
+            return  processResponse;
+        }else{
+            return "{\"status\":\"success\"}";
+
         }
     }
 
@@ -1322,6 +1350,7 @@ public class UserController {
     // gst initiate upload document
     public String funcInitiateGstUpload(String application,String module,String moduleCategory,String action,String event,String requestdata,String userName){
         /*declaration */
+        final String loginUserId = userService.getLoginUserID(userName);
         Utility utility = new Utility();
         HashMap  outParam= new HashMap(), inParam = new HashMap();
         JSONObject  jsonObject,jsonObject1,jsonObject2;
@@ -1339,6 +1368,7 @@ public class UserController {
         String      toYear="",toMonth="";
         SimpleDateFormat simpleDateFormatDate = new SimpleDateFormat(patterndate);
         SimpleDateFormat simpleDateFormatTime = new SimpleDateFormat(patterntime);
+
 
         module = module+"/"+moduleCategory;
         action = action+"/"+event;
@@ -1467,6 +1497,12 @@ public class UserController {
         perfiosReqResDtl.setRequest_type("GST_UPLOAD");
         perfiosReqResDtl.setInitiated_req(requestdata);
         perfiosReqResDtl.setEntity_type(entityType);
+        perfiosReqResDtl.setEntered_by(loginUserId);
+        perfiosReqResDtl.setLast_entered_by(loginUserId);
+        Utility.print("loginUserId:"+loginUserId);
+        Utility.print("machine:"+perfiosReqResDtl.getMachine_nm());
+        Utility.print("machine:"+perfiosReqResDtl.getLast_modified_date());
+
 
         //set request parameter
         periodFrom      = periodFrom == null ? "" : periodFrom;
@@ -1561,7 +1597,7 @@ public class UserController {
         jsonObject1 = new JSONObject();
         jsonObject2 = new JSONObject();
         final long docId = 14; // for gst pdf documnent
-        String userID, docUUID;
+        String userID, docUUID,loginUserId = userService.getLoginUserID(userName);
         long refId = 0, serialNo = 0;
         int cnt = 0;
         String channel, result, perfiosTransactionId,entityType=null;
@@ -1716,7 +1752,7 @@ public class UserController {
                     connection = jdbcTemplate.getDataSource().getConnection();
                     connection.setAutoCommit(false);
                     cs = connection.prepareCall(
-                            "{ call PACK_DOCUMENT.proc_insert_gstupload_document(?,?,?,?,?,?,?,?,?,?,?) }");
+                            "{ call PACK_DOCUMENT.proc_insert_gstupload_document(?,?,?,?,?,?,?,?,?,?,?,?) }");
                     cs.setString(1, perfiosReqResDtlDto.getUserid());
                     cs.setString(2, perfiosTransactionId);
                     cs.setString(3, String.valueOf(docId));
@@ -1727,10 +1763,12 @@ public class UserController {
                     cs.setString(8, doc_status);
                     cs.setString(9, resultOut);
                     cs.setString(10, remarks);
+                    cs.setString(11, loginUserId);
 
-                    cs.registerOutParameter(11, 2005);
+
+                    cs.registerOutParameter(12, 2005);
                     cs.execute();
-                    final String returnData = cs.getString(11);
+                    final String returnData = cs.getString(12);
                     connection.close();
                     cs.close();
                     Utility.print(returnData);
@@ -2012,48 +2050,8 @@ public class UserController {
         return "0";
     }
 
-    // fetch and update gst upload status at the time of webHook
-    public String fetchDocumentStatus(String perfiosTransactionId, int urlID, String caseStr) {
-        JSONObject jsonObject, jsonObject1, jsonObject2;
-
-        URLConfigDto urlConfigDto = userService.findURLDtlByID(urlID);
-
-        if (urlConfigDto.getUserid() == null) {
-            return "URL UserID not found for:" + urlID;
-        } else if (urlConfigDto.getUrl() == null) {
-            return "URL string not found for:" + urlID;
-        }
-
-        Utility utility = new Utility();
-        String sendURL, urlResponse;
-        int rowUpdate = 0;
-        sendURL = urlConfigDto.getUrl() + urlConfigDto.getUserid() + "/" + perfiosTransactionId;
-        try {
-            URL url = new URL(sendURL);
-            HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
-            conn.setRequestMethod("GET");
-            conn.setRequestProperty("content-Type", "application/json");
-            conn.addRequestProperty("cache-control", "no-cache");
-            urlResponse = utility.getURLResponse(conn);
-            jsonObject1 = new JSONObject(urlResponse);
-            System.out.println("Response Code:" + conn.getResponseCode());
-            if (conn.getResponseCode() == 200) {
-                /*
-                 * { message: COMPLETED, status : true, statementsStatus: [ {fileName:
-                 * XYZ.pdf,status: COMPLETED,message: }, {fileName: ABC.pdf,status: REJECTED,
-                 * message: The uploaded file is not a valid GST return file.}] }
-                 */
-
-                // update gst document status
-                rowUpdate = updateGstDocumentStatus(perfiosTransactionId, caseStr, jsonObject1.toString());
-                return "" + rowUpdate + " row(s) updated.";
-            } else {
-                return "failed due to HTTP Status code:" + conn.getResponseCode();
-            }
-        } catch (Exception e) {
-            return e.getMessage();
-        }
-    }
+    //moved: fetchDocumentStatus() to scheduler
+    //on date: 25/06/2021
 
     /*****************************************
      * IT UPLOAD
@@ -2067,7 +2065,8 @@ public class UserController {
         jsonObject1 = new JSONObject();
         jsonObject2 = new JSONObject();
         final String productType = "itstatement";
-        String      channel,completeURL,result,finYear,entityType=null,reInitiate="N";
+        String      channel,completeURL,result,finYear,entityType=null,reInitiate="N",
+                loginUserID = userService.getLoginUserID(userName);
         long        refId=0, serialNo=0;
         channel = null; result = null; finYear = null;
         String      patterndate = "yyyyMMdd";
@@ -2081,6 +2080,7 @@ public class UserController {
 
         /*read requestdata*/
         if(requestdata.isEmpty()){return "Request Body Empty.";}
+
         //check api allow//
         int para_cd = 9;
         SysParaMst sysParaMst = userService.getParaVal("9999","9999",para_cd);
@@ -2193,6 +2193,8 @@ public class UserController {
         perfiosReqResDtl.setRequest_type("ITR_UPLOAD");
         perfiosReqResDtl.setInitiated_req(requestdata);
         perfiosReqResDtl.setEntity_type(entityType);
+        perfiosReqResDtl.setEntered_by(loginUserID);
+        perfiosReqResDtl.setLast_entered_by(loginUserID);
 
         String create_Json = "{\"clientTransactionId\":\""+urlConfigDto.getKey()+"\",\"transactionCompleteUrl\":\""+completeURL+"\",\"type\":\""+productType+"\"}";
         System.out.println("Request JSON:\n"+create_Json);
@@ -2264,6 +2266,7 @@ public class UserController {
         jsonObject = new JSONObject();
         jsonObject1 = new JSONObject();
         jsonObject2 = new JSONObject();
+        final String loginUserId = userService.getLoginUserID(userName);
         String channel = null, result = null, perfiosTransactionId = null,entityType=null;
 
         long refId = 0, serialNo = 0;
@@ -2331,7 +2334,7 @@ public class UserController {
         List<CrmDocumentMst> docMst = userService.getDocMstListByDocType("ITR");
         long docId = 0;
         int docMstSize = docMst.size();
-        Utility.print("document mst row count for ITR:" + docMstSize); // expect:6 from CRM_DOCCUMENT_MST
+        Utility.print("document mst row count for ITR:" + docMstSize); // expect:6 from CRM_DOCUMENT_MST
 
         int docMstCount = 0;
         if (docMstSize > 0) {
@@ -2457,7 +2460,7 @@ public class UserController {
                             connection = jdbcTemplate.getDataSource().getConnection();
                             connection.setAutoCommit(false);
                             cs = connection.prepareCall(
-                                    "{ call PACK_DOCUMENT.proc_insert_gstupload_document(?,?,?,?,?,?,?,?,?,?,?) }");
+                                    "{ call PACK_DOCUMENT.proc_insert_gstupload_document(?,?,?,?,?,?,?,?,?,?,?,?) }");
                             cs.setString(1, perfiosReqResDtlDto.getUserid());
                             cs.setString(2, perfiosTransactionId);
                             cs.setString(3, String.valueOf(docId));
@@ -2468,11 +2471,13 @@ public class UserController {
                             cs.setString(8, doc_status);
                             cs.setString(9, resultOut);
                             cs.setString(10, remarks);
+                            cs.setString(11, loginUserId);
 
-                            cs.registerOutParameter(11, 2005);
+
+                            cs.registerOutParameter(12, 2005);
                             cs.execute();
                             // either 0 or 1: fail or success
-                            final String returnData = cs.getString(11);
+                            final String returnData = cs.getString(12);
                             if (returnData.equals("1")) {
                                 Utility.print("File Response saved successfully.");
                             } else {
@@ -2758,6 +2763,7 @@ public class UserController {
     // initiate bank statement
     public String funcInitiateStatementUpload(String application,String module,String moduleCategory,String action,String event,String requestdata,String userName) {
         /* declaration */
+        final String loginUserID = userService.getLoginUserID(userName);
         Utility utility = new Utility();
         JSONObject  jsonObject  = new JSONObject();
         JSONObject  jsonObject1 = new JSONObject();
@@ -2778,6 +2784,7 @@ public class UserController {
         SimpleDateFormat simpleDateFormatDate = new SimpleDateFormat(patterndate);
         SimpleDateFormat simpleDateFormatTime = new SimpleDateFormat(patterntime);
         SimpleDateFormat sendDateFormat = new SimpleDateFormat(sendDatePattern);
+
         /*end declaration*/
         Utility.print("stage:1");
 
@@ -3063,6 +3070,8 @@ public class UserController {
         perfiosReqResDtl.setEntity_type(entityType);
         perfiosReqResDtl.setRef_sr_cd(serialNo);
         perfiosReqResDtl.setBank_line_id(bankLineID);
+        perfiosReqResDtl.setEntered_by(loginUserID);
+        perfiosReqResDtl.setLast_entered_by(loginUserID);
 
         /**SAMPLE PAYLOAD**/
         /*<payload>
@@ -3254,6 +3263,7 @@ public class UserController {
         JSONObject jsonObject, jsonObject1, jsonObject2;
         jsonObject1 = new JSONObject();
         jsonObject2 = new JSONObject();
+        final String loginUserId = userService.getLoginUserID(userName);
         String channel, result, perfiosTransactionId,entityType=null;
         channel = null;
         result = null;
@@ -3469,7 +3479,7 @@ public class UserController {
                             connection = jdbcTemplate.getDataSource().getConnection();
                             connection.setAutoCommit(false);
                             cs = connection.prepareCall(
-                                    "{ call PACK_DOCUMENT.proc_insert_gstupload_document(?,?,?,?,?,?,?,?,?,?,?) }");
+                                    "{ call PACK_DOCUMENT.proc_insert_gstupload_document(?,?,?,?,?,?,?,?,?,?,?,?) }");
                             cs.setString(1, perfiosReqResDtlDto.getUserid());
                             cs.setString(2, perfiosTransactionId);
                             cs.setString(3, String.valueOf(docId));
@@ -3480,11 +3490,13 @@ public class UserController {
                             cs.setString(8, doc_status);
                             cs.setString(9, resultOut);
                             cs.setString(10, remarks);
+                            cs.setString(11, loginUserId);
 
-                            cs.registerOutParameter(11, 2005);
+
+                            cs.registerOutParameter(12, 2005);
                             cs.execute();
                             // either 0 or 1: fail or success
-                            final String returnData = cs.getString(11);
+                            final String returnData = cs.getString(12);
                             if (returnData.equals("1")) {
                                 Utility.print("File Response saved successfully.");
                             } else {
@@ -4055,7 +4067,7 @@ public class UserController {
 
             // get transaction detail
             PerfiosReqResDto perfiosReqResDtlDto = userService.findByPerfiosTransactionID(perfiosTransactionId);
-            Utility.print("perfuios:" + perfiosReqResDtlDto.getUserid());
+            Utility.print("perfios:" + perfiosReqResDtlDto.getUserid());
             if (perfiosReqResDtlDto.getTransaction_id() == null) {
                 return userService.getJsonError("-99", "Initial Bank Statement Upload Transaction Not Found",
                         "Initial Transaction Not found.", "Initial Transaction Not Found.", "99", channel, action,
@@ -4083,21 +4095,17 @@ public class UserController {
 
     // retrieve statement method
     public String retrieveStatementReport(String perfiosTransactionId, String txnId, String ls_webhookres) {
-        Utility.print("1");
+        Utility utility = new Utility();
+        String processResponse=utility.getWebhookProcessStructure();
+        //processResponse structure
+        String processStatus="success",processLoc=className+"/retrieveStatementReport()",processTitle="",processDesc="";
         String downloadStatus = null;
         String action = "statementReportRetrieve", channel = "W";
         String httpStatus = null, sendURL1 = null, sendURL2 = null;
         Blob zipBlobdata;
-        URLConfigDto urlConfigDto = userService.findURLDtlByID(36);
+        int configCd = 36;
+        URLConfigDto urlConfigDto = userService.findURLDtlByID(configCd);
         Utility.print("2");
-
-        if (urlConfigDto.getUrl() == null) {
-            return "failed";
-        }
-        if (urlConfigDto.getUserid() == null) {
-            return "failed";
-        }
-        Utility.print("3");
 
         String payloadJson = "<payload><apiVersion>2.1</apiVersion>" + "<perfiosTransactionId>" + perfiosTransactionId
                 + "</perfiosTransactionId>" + "<reportType>json</reportType>" + "<txnId>" + txnId + "</txnId>"
@@ -4109,10 +4117,8 @@ public class UserController {
 
         ResponseEntity<String> result = null;
         try {
-            Utility.print("4");
-            if (!urlConfigDto.getUserid().isEmpty()) {
-                Utility.print("5");
-                // URl for retrive transaction information
+            if (!urlConfigDto.getUserid().isEmpty()){
+                // URl for retrieve transaction information
                 sendURL1 = urlConfigDto.getUrl();// + urlConfigDto.getUserid() + "/" + ls_transaction_id;
                 sendURL2 = sendURL1;
                 Utility.print("1. generated URL:" + sendURL1);
@@ -4139,7 +4145,6 @@ public class UserController {
                 int filecount;
 
                 Utility.print("3. API status OK");
-                Utility utility = new Utility();
                 Blob jsonFileBlob = null, xlsxFileBlob;
                 String jsonClobData = null;
                 downloadStatus = "P";
@@ -4193,28 +4198,36 @@ public class UserController {
                                 "No Download found for JsonURL:" + JsonURL + "XlsxURL:" + XlsxURL);
                     }
                 } catch (MalformedURLException e) {
-                    System.out.println("Result : MalformedURLException "+e.getMessage());
-                    e.printStackTrace();
+                    processStatus = "failed";
+                    processTitle  = "MalformedURLException";
+                    processDesc   = "(A)error:"+e.getMessage();
                 } catch (IOException e) {
-                    System.out.println("Result : IOException" +e.getMessage());
-                    e.printStackTrace();
+                    processStatus = "failed";
+                    processTitle  = "IOException";
+                    processDesc   = "(B)error:"+e.getMessage();
                 } catch (Exception e) {
-                    System.out.println("Result : Exception "+e.getMessage());
-                    e.printStackTrace();
+                    processStatus = "failed";
+                    processTitle  = "Exception";
+                    processDesc   = "(C)error:"+e.getMessage();
                 }
             } else {
-                return "failed";
+                processStatus = "failed";
+                processTitle  = "URL Configuration Not Found";
+                processDesc   = "(D)urlId:"+configCd+"|userId is missing";
             }
-            if (downloadStatus.equals("S")) {
-                return "success";
-                // return "{\"status\": \"0\",\"response_data\":
-                // {\"status\":\"success\",\"message\": \"Report retrieved successfully.\"}}";
-            } else {
-                return "failed";
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "failed";
+        }catch (Exception e) {
+            processStatus = "failed";
+            processTitle  = "Exception";
+            processDesc   = "(E)error:"+e.getMessage();
+        }
+        if(processStatus.equalsIgnoreCase("failed")){
+            processResponse = processResponse.replace("<status>",processStatus);
+            processResponse = processResponse.replace("<location>",processLoc);
+            processResponse = processResponse.replace("<title>",processTitle);
+            processResponse = processResponse.replace("<desc>",processDesc);
+            return  processResponse;
+        }else{
+            return "{\"status\":\"success\"}";
         }
     }
 
@@ -4811,7 +4824,8 @@ public class UserController {
 
     public String getCorpositoryTokenDetail_v2(String userName){
         final String requestType = "login", channel="W",
-                module      = "lead/external", action="corpository/login";
+                module      = "lead/external", action="corpository/login",
+                loginUserID = userService.getLoginUserID(userName);
         JSONObject jsonObject  = new JSONObject();
         JSONObject jsonURLResponse = new JSONObject();
         LosCorpositoryAPI losCorpositoryAPI = new LosCorpositoryAPI();
@@ -4886,6 +4900,8 @@ public class UserController {
                     losCorpositoryAPI.setRef_Sr_cd(null);
                     losCorpositoryAPI.setEntity_type(null);
                     losCorpositoryAPI.setRemarks(resStatus.equals("S")?"success":"failed");
+                    losCorpositoryAPI.setEntered_by(loginUserID);
+                    losCorpositoryAPI.setLast_entered_by(loginUserID);
                     userService.saveCorpositoryAPI(losCorpositoryAPI);
                     return jsonObject.toString();
                 }else {
@@ -4899,6 +4915,8 @@ public class UserController {
                     losCorpositoryAPI.setRef_Sr_cd(null);
                     losCorpositoryAPI.setEntity_type(null);
                     losCorpositoryAPI.setRemarks(requestType+" failed");
+                    losCorpositoryAPI.setEntered_by(loginUserID);
+                    losCorpositoryAPI.setLast_entered_by(loginUserID);
                     userService.saveCorpositoryAPI(losCorpositoryAPI);
                     return userService.getJsonError("-99","Response Status:"+conn.getResponseCode(),g_error_msg,result,"99",channel,action,requestData,userName,module,"U");
                 }
@@ -4934,7 +4952,7 @@ public class UserController {
     public String funcInitiateCompanySearch(String g_application, String module, String moduleCategory, String action, String event, String requestData, String userName){
         JSONObject jsonObject =null,jsonObject1=null,jsonTokenData=null;
         JSONObject jsonURLResponse = new JSONObject();
-        final String requestType = "searchCompanies";
+        final String requestType = "searchCompanies",loginUserId = userService.getLoginUserID(userName);
         String filter=null, sendURL,result,channel="W",tokenResult=null,
                 authTokenID=null,v_tag=null,data=null,
                 resStatus=null,entityName=null;
@@ -5035,7 +5053,7 @@ public class UserController {
                 " \"type\": [],\n" +
                 " \"liability\": [],\n" +
                 " \"offset-start\": 0,\n" +
-                " \"offset-end\": 10\n" +
+                " \"offset-end\": 50\n" +
                 " }\n" +
                 " }\n" +
                 "}";
@@ -5087,6 +5105,8 @@ public class UserController {
             losCorpositoryAPI.setRef_Sr_cd(Long.valueOf(1));
             losCorpositoryAPI.setEntity_type("L");
             losCorpositoryAPI.setRemarks(resStatus.equals("S")?"success":"failed");
+            losCorpositoryAPI.setEntered_by(loginUserId);
+            losCorpositoryAPI.setLast_entered_by(loginUserId);
             userService.saveCorpositoryAPI(losCorpositoryAPI);
             return jsonObject1.toString();
         }catch(JSONException e){
@@ -5103,7 +5123,7 @@ public class UserController {
     public String funcInitiateCreditOrder(String g_application, String module, String moduleCategory, String action, String event, String requestData, String userName){
         JSONObject jsonObject =null, jsonObject1=null,jsonTokenData=null;
         JSONObject jsonURLResponse = new JSONObject();
-        final String requestType = "creditOrder";
+        final String requestType = "creditOrder",loginUserId = userService.getLoginUserID(userName);
         String filter=null, sendURL,result,channel="W",tokenResult=null,
                 authTokenID=null,v_tag=null,enitityName=null,data=null,
                 resStatus=null;
@@ -5258,6 +5278,8 @@ public class UserController {
             losCorpositoryAPI.setRef_Sr_cd(Long.valueOf(1));
             losCorpositoryAPI.setEntity_type("L");
             losCorpositoryAPI.setRemarks(resStatus.equals("S")?"success":"failed");
+            losCorpositoryAPI.setEntered_by(loginUserId);
+            losCorpositoryAPI.setLast_entered_by(loginUserId);
             userService.saveCorpositoryAPI(losCorpositoryAPI);
             return jsonObject1.toString();
         }catch(JSONException e){
@@ -5274,7 +5296,7 @@ public class UserController {
     public String funcGetFinancialDetail(String g_application, String module, String moduleCategory, String action, String event, String requestData, String userName){
         JSONObject jsonObject =null,jsonObject1=null,jsonTokenData=null;
         JSONObject jsonURLResponse = new JSONObject();
-        final String requestType = "financial_detail";
+        final String requestType = "financial_detail",loginUserId = userService.getLoginUserID(userName);
         String filter=null, sendURL,result,channel="W",tokenResult=null,
                 authTokenID=null,v_tag=null,enitityName=null,data=null,
                 resStatus=null;
@@ -5412,6 +5434,8 @@ public class UserController {
             losCorpositoryAPI.setRef_Sr_cd(Long.valueOf(1));
             losCorpositoryAPI.setEntity_type("L");
             losCorpositoryAPI.setRemarks(resStatus.equals("S")?"success":"failed");
+            losCorpositoryAPI.setEntered_by(loginUserId);
+            losCorpositoryAPI.setLast_entered_by(loginUserId);
             userService.saveCorpositoryAPI(losCorpositoryAPI);
             return jsonObject1.toString();
         }catch(JSONException e){
@@ -5750,6 +5774,5 @@ public class UserController {
         }
         return response;
     }
-
 
 }
