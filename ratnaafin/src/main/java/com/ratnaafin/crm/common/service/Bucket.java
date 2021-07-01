@@ -3,6 +3,13 @@ package com.ratnaafin.crm.common.service;
 import java.io.File;
 
 public class Bucket {
+    public static final String processResponseFill = "{\n" +
+            "\t\"status\":\"<status>\",\n" +
+            "\t\"webhook\":\"<webhook>\",\n" +
+            "\t\"location\":\"<location>\",\n" +
+            "\t\"errorTitle\":\"<title>\",\n" +
+            "\t\"errorDesc\":\"<desc>\"\n" +
+            "}";
     private static final String ENCRYPTION_ALGO = "RSA/ECB/PKCS1Padding";
     public static final String DIGEST_ALGO = "SHA-1";
     private static final String LOCAL_PATH = new File(".").getAbsolutePath();
@@ -98,4 +105,6 @@ public class Bucket {
     public static String getGstItrUploadPrivateKey() {
         return gstItrUploadPrivateKey;
     }
+
+    public static  String getWebhookProcessStructure(){ return  processResponseFill;}
 }
