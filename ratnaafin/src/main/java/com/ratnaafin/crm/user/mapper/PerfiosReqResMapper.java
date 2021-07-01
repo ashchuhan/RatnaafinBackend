@@ -29,6 +29,12 @@ public class PerfiosReqResMapper {
             perfiosReqResDtl.setEntity_type(perfiosReqResDto.getEntity_type());
             perfiosReqResDtl.setBank_line_id(perfiosReqResDto.getBank_line_id());
             perfiosReqResDtl.setLast_update_dt(perfiosReqResDto.getLast_update_dt());
+            perfiosReqResDtl.setEntered_date(perfiosReqResDto.getEntered_date());
+            perfiosReqResDtl.setEntered_by(perfiosReqResDto.getEntered_by());;
+            perfiosReqResDtl.setLast_entered_by(perfiosReqResDto.getLast_entered_by());
+            perfiosReqResDtl.setLast_modified_date(perfiosReqResDto.getLast_modified_date());
+            perfiosReqResDtl.setMachine_nm(perfiosReqResDto.getMachine_nm());
+            perfiosReqResDtl.setLast_machine_nm(perfiosReqResDto.getLast_machine_nm());
         }
         return perfiosReqResDtl;
     }
@@ -55,6 +61,12 @@ public class PerfiosReqResMapper {
             perfiosReqResDto.setEntity_type(perfiosReqResDtl.getEntity_type());
             perfiosReqResDto.setBank_line_id(perfiosReqResDtl.getBank_line_id());
             perfiosReqResDto.setLast_update_dt(perfiosReqResDtl.getLast_update_dt());
+            perfiosReqResDto.setEntered_date(perfiosReqResDtl.getEntered_date());
+            perfiosReqResDto.setEntered_by(perfiosReqResDtl.getEntered_by());;
+            perfiosReqResDto.setLast_entered_by(perfiosReqResDtl.getLast_entered_by());
+            perfiosReqResDto.setLast_modified_date(perfiosReqResDtl.getLast_modified_date());
+            perfiosReqResDto.setMachine_nm(perfiosReqResDtl.getMachine_nm());
+            perfiosReqResDto.setLast_machine_nm(perfiosReqResDtl.getLast_machine_nm());
 
         }
         return perfiosReqResDto;

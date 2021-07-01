@@ -29,6 +29,7 @@ import javax.net.ssl.HttpsURLConnection;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.ratnaafin.crm.user.controller.UserController;
 import com.ratnaafin.crm.user.dao.*;
 import com.ratnaafin.crm.user.dto.*;
 import com.ratnaafin.crm.user.mapper.*;
@@ -183,6 +184,8 @@ public class UserServiceImpl implements UserService{
     @Autowired
     private OtpVerificationDao otpVerificationDao;
 
+    @Autowired
+    private ApiWebhookActivityDao apiWebhookActivityDao;
 
     public List<UserDto> findAll() {
         List<User_master> list = new ArrayList<>();
@@ -1340,7 +1343,7 @@ public class UserServiceImpl implements UserService{
 
     @Override
     public void updatePerfiosWebhookStatus(String transactionID, String webhookStatus, String status, String webhookRes, Blob zip, Blob xlsfile,String jsonfile,String downloadStatus,String remarks) {
-        perfiosReqResDao.updatePerfiosWebhookStatus(transactionID,webhookStatus,status,webhookRes,zip,xlsfile,jsonfile,downloadStatus,remarks);
+        perfiosReqResDao.updatePerfiosWebhookStatus(transactionID,webhookStatus,status,webhookRes,zip,xlsfile,jsonfile,downloadStatus,remarks,new Date());
 
     }
 
@@ -1897,6 +1900,7 @@ public class UserServiceImpl implements UserService{
                         String caseAction,data;
                         caseAction     = (String)param.get("action");
                         data           = (String)param.get("jsonReqData");
+                        Utility.print("data:"+data);
                         jsonReqData    = new JSONObject(data);
                         cs = connection.prepareCall("{ call "+objectName+"(?,?,?)}");
 
@@ -2249,5 +2253,34 @@ public class UserServiceImpl implements UserService{
             e.printStackTrace();
         }
         return  returnDateStr;
+    }
+
+    public String getLoginUserID(String userName) {
+        HashMap inParam=new HashMap(),outParam;
+        inParam.put("action", "get_user_id");
+        inParam.put("jsonReqData","{\"userName\":"+"\""+userName+"\""+"}");
+
+        outParam = callingDBObject("procedure", "proc_calling_db_objects", inParam);
+        if(outParam.containsKey("result")){
+            return (String)outParam.get("result");
+        }else{
+            return "";
+        }
+    }
+
+    public void saveApiWebhook(ApiWebhookActivity apiWebhookActivity){
+        apiWebhookActivityDao.save(apiWebhookActivity);
+    }
+
+    public List<ApiWebhookActivity> findWebhookProcess() {
+        return apiWebhookActivityDao.findWebhookProcess();
+    }
+
+    public void updateWebhookProcess(Long tranCd,String processStatus,String processResponse,String webhookFlag,String remarks){
+        apiWebhookActivityDao.updateWebhookProcess(tranCd,processStatus,processResponse,webhookFlag,remarks,new Date());
+    }
+
+    public List<PerfiosReqResDtl> findPendingDocumentProcess() {
+        return perfiosReqResDao.findPendingDocumentProcess();
     }
 }

@@ -1,6 +1,5 @@
 package com.ratnaafin.crm.user.dto;
 
-import javax.persistence.Column;
 import java.sql.Blob;
 import java.util.Date;
 
@@ -42,6 +41,18 @@ public class PerfiosReqResDto {
     private  Long bank_line_id;
     
     private Date last_update_dt;
+
+    private String entered_by;
+
+    private String last_entered_by;
+
+    private Date entered_date;
+
+    private Date last_modified_date;
+
+    private String machine_nm;
+
+    private String last_machine_nm;
 
     public Blob getZipfile() {
         return zipfile;
@@ -194,6 +205,53 @@ public class PerfiosReqResDto {
     public void setLast_update_dt(Date last_update_dt) {
         this.last_update_dt = last_update_dt;
     }
-    
+
+    public String getEntered_by() {
+        return entered_by;
+    }
+
+    public void setEntered_by(String entered_by) {
+        this.entered_by = entered_by;
+    }
+
+    public String getLast_entered_by() {
+        return last_entered_by;
+    }
+
+    public void setLast_entered_by(String last_entered_by) {
+        this.last_entered_by = last_entered_by;
+    }
+
+    public Date getEntered_date() {
+        return entered_date;
+    }
+
+    public void setEntered_date(Date entered_date) {
+        this.entered_date = entered_date;
+    }
+
+    public Date getLast_modified_date() {
+        return last_modified_date;
+    }
+
+    public void setLast_modified_date(Date last_modified_date) {
+        this.last_modified_date = last_modified_date;
+    }
+
+    public String getMachine_nm() {
+        return machine_nm;
+    }
+
+    public void setMachine_nm(String machine_nm) {
+        this.machine_nm = machine_nm;
+    }
+
+    public String getLast_machine_nm() {
+        return last_machine_nm;
+    }
+
+    public void setLast_machine_nm(String last_machine_nm) {
+        this.last_machine_nm = last_machine_nm;
+    }
 }
 

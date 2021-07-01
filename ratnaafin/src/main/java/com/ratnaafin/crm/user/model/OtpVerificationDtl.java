@@ -66,6 +66,9 @@ public class OtpVerificationDtl {
     @Column(name = "link_sent_date")
     private Date link_sent_date;
 
+    @Column(name = "shorted_link")
+    private String shorted_link;
+
     public String getToken_id() {
         return token_id;
     }
@@ -224,5 +227,13 @@ public class OtpVerificationDtl {
 
     public void setlink_sent_date(Date link_sent_date) {
         this.link_sent_date = link_sent_date;
+    }
+
+    public String getShorted_link() {
+        return shorted_link;
+    }
+
+    public void setShorted_link(String shorted_link) {
+        this.shorted_link = shorted_link;
     }
 }
