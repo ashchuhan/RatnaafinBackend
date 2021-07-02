@@ -99,6 +99,7 @@ public class MiddlewareController {
         }
         try {
             perfiosTransactionId = new JSONObject(requestData).getJSONObject("request_data").getString("perfiosTransactionId");
+            perfiosTransactionId = null;
         }catch(JSONException e) {
             perfiosTransactionId = null;
         }
@@ -107,15 +108,15 @@ public class MiddlewareController {
         {
             case "lead/gstupload/startupload":
                 Utility.print("middleware starting"+action);
-                result = funcGstStatementUpload(g_application,module,action,event,requestData,userName);
+                result = "0";//funcGstStatementUpload(g_application,module,action,event,requestData,userName);
                 break;
             case "lead/itrupload/startupload":
                 Utility.print("middleware starting"+action);
-                result = funcItStatementUpload(g_application,module,action,event,requestData,userName);
+                result = "1";//funcItStatementUpload(g_application,module,action,event,requestData,userName);
                 break;
             case "lead/statementupload/startupload":
                 Utility.print("middleware starting"+action);
-                result = funcBankStatementUpload(g_application,module,action,event,requestData,userName);
+                result = "2";//funcBankStatementUpload(g_application,module,action,event,requestData,userName);
                 break; //lead/statementupload/startupload
             case "lead/corpository/financial":
                 Utility.print("middleware starting"+action);
@@ -529,6 +530,7 @@ public class MiddlewareController {
         String remarks = null;
         if(processFor.equals("ALL")){
             List<CrmMiscMst> docTypeList = userService.findByCategory("GST_DOC_TYPE");
+
             if(docTypeList==null||docTypeList.size()<=0){
                 userService.getJsonError("-99","Master Document Type Not Found.(GST)",g_error_msg,"GST Document Type not in Master Table.","99",channel,action,requestdata,userName,module,"U");
                 return userError("GST Document Type not in Master Table.");
@@ -616,7 +618,7 @@ public class MiddlewareController {
                             //save each file status
                             connection = jdbcTemplate.getDataSource().getConnection();
                             connection.setAutoCommit(false);
-                            cs = connection.prepareCall("{ call pack_document.proc_insert_gstupload_document(?,?,?,?,?,?,?,?,?,?,?) }");
+                            cs = connection.prepareCall("{ call pack_document.proc_insert_gstupload_document(?,?,?,?,?,?,?,?,?,?,?,?) }");
                             cs.setString(1, perfiosReqResDto.getUserid());
                             cs.setString(2, perfiosTransactionId);
                             cs.setString(3, String.valueOf(docId));
@@ -627,11 +629,13 @@ public class MiddlewareController {
                             cs.setString(8, doc_status);
                             cs.setString(9, resultOut);
                             cs.setString(10, remarks);
+                            cs.setString(11, perfiosReqResDto.getEntered_by());
 
 
-                            cs.registerOutParameter(11, 2005);
+
+                            cs.registerOutParameter(12, 2005);
                             cs.execute();
-                            final String returnData = cs.getString(11);
+                            final String returnData = cs.getString(12);
                             connection.close();
                             cs.close();
                             Utility.print(returnData);
@@ -732,7 +736,7 @@ public class MiddlewareController {
                         //save each file status
                         connection = jdbcTemplate.getDataSource().getConnection();
                         connection.setAutoCommit(false);
-                        cs = connection.prepareCall("{ call pack_document.proc_insert_gstupload_document(?,?,?,?,?,?,?,?,?,?,?) }");
+                        cs = connection.prepareCall("{ call pack_document.proc_insert_gstupload_document(?,?,?,?,?,?,?,?,?,?,?,?) }");
                         cs.setString(1, perfiosReqResDto.getUserid());
                         cs.setString(2, perfiosTransactionId);
                         cs.setString(3, String.valueOf(docId));
@@ -743,11 +747,13 @@ public class MiddlewareController {
                         cs.setString(8, doc_status);
                         cs.setString(9, resultOut);
                         cs.setString(10, remarks);
+                        cs.setString(11, perfiosReqResDto.getEntered_by());
 
 
-                        cs.registerOutParameter(11, 2005);
+
+                        cs.registerOutParameter(12, 2005);
                         cs.execute();
-                        final String returnData = cs.getString(11);
+                        final String returnData = cs.getString(12);
                         connection.close();
                         cs.close();
                         Utility.print(returnData);
@@ -1140,7 +1146,7 @@ public class MiddlewareController {
                             //save each file status
                             connection = jdbcTemplate.getDataSource().getConnection();
                             connection.setAutoCommit(false);
-                            cs = connection.prepareCall("{ call PACK_DOCUMENT.proc_insert_gstupload_document(?,?,?,?,?,?,?,?,?,?,?) }");
+                            cs = connection.prepareCall("{ call PACK_DOCUMENT.proc_insert_gstupload_document(?,?,?,?,?,?,?,?,?,?,?,?) }");
                             cs.setString(1, perfiosReqResDto.getUserid());
                             cs.setString(2, perfiosTransactionId);
                             cs.setString(3, String.valueOf(docId));
@@ -1151,12 +1157,13 @@ public class MiddlewareController {
                             cs.setString(8, doc_status);
                             cs.setString(9, resultOut);
                             cs.setString(10, remarks);
+                            cs.setString(11,perfiosReqResDto.getEntered_by());
 
 
-                            cs.registerOutParameter(11, 2005);
+                            cs.registerOutParameter(12, 2005);
                             cs.execute();
                             //either 0 or 1: fail or success
-                            final String returnData = cs.getString(11);
+                            final String returnData = cs.getString(12);
                             connection.close();
                             cs.close();
                             if(returnData.equals("1")){Utility.print("File Response saved successfully.");
@@ -1192,6 +1199,7 @@ public class MiddlewareController {
         }
 
     }
+
     //2.3) itr uploaded document start process for report
     public String funcItStatementStartProcess(String application,String module,String action,String event,String requestdata,String userName){
         //declaration
@@ -1631,7 +1639,7 @@ public class MiddlewareController {
                             //save each file status
                             connection = jdbcTemplate.getDataSource().getConnection();
                             connection.setAutoCommit(false);
-                            cs = connection.prepareCall("{ call PACK_DOCUMENT.proc_insert_gstupload_document(?,?,?,?,?,?,?,?,?,?,?) }");
+                            cs = connection.prepareCall("{ call PACK_DOCUMENT.proc_insert_gstupload_document(?,?,?,?,?,?,?,?,?,?,?,?) }");
                             cs.setString(1, perfiosReqResDto.getUserid());
                             cs.setString(2, perfiosTransactionId);
                             cs.setString(3, String.valueOf(docId));
@@ -1642,11 +1650,12 @@ public class MiddlewareController {
                             cs.setString(8, doc_status);
                             cs.setString(9, resultOut);
                             cs.setString(10,remarks);
+                            cs.setString(11,perfiosReqResDto.getEntered_by());
 
-                            cs.registerOutParameter(11, 2005);
+                            cs.registerOutParameter(12, 2005);
                             cs.execute();
                             //either 0 or 1: fail or success
-                            final String returnData = cs.getString(11);
+                            final String returnData = cs.getString(12);
                             if(returnData.equals("1")){
                                 Utility.print("File Response saved successfully.");
                             }else{
