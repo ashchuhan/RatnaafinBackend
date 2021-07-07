@@ -1888,7 +1888,7 @@ public class UserServiceImpl implements UserService{
 
                         cs.registerOutParameter(7,2005);
                         cs.execute();
-
+                        connection.commit();
                         result = cs.getString(7);
                         Utility.print("proc_output:\n"+result);
                         outParam.put("result",result);
