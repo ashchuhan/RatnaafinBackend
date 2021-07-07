@@ -1888,7 +1888,7 @@ public class UserServiceImpl implements UserService{
 
                         cs.registerOutParameter(7,2005);
                         cs.execute();
-
+                        connection.commit();
                         result = cs.getString(7);
                         Utility.print("proc_output:\n"+result);
                         outParam.put("result",result);
@@ -1923,10 +1923,20 @@ public class UserServiceImpl implements UserService{
             }
             return  outParam;
         }catch (SQLException e) {
+            try{
+                connection.rollback();
+            }catch (Exception ex){
+                //
+            }
             e.printStackTrace();
             outParam.put("error",e.getMessage());
             return outParam;
         }catch (Exception e) {
+            try{
+                connection.rollback();
+            }catch (Exception ex){
+                //
+            }
             e.printStackTrace();
             outParam.put("error",e.getMessage()+",Cause:"+e.getCause().getMessage());
             return outParam;
@@ -2054,8 +2064,8 @@ public class UserServiceImpl implements UserService{
     }
 
     @Override
-    public void updateEqfxOTPLinkStatus(String token_id, String status,String remarks){
-        equifaxAPILogDao.updateEqfxOTPLinkStatus(token_id, status,remarks,new Date());
+    public void updateEqfxOTPLinkStatus(String token_id, String status,String remarks,String shortedURL){
+        equifaxAPILogDao.updateEqfxOTPLinkStatus(token_id, status,remarks,shortedURL,new Date());
     }
 
     @Override
@@ -2069,8 +2079,8 @@ public class UserServiceImpl implements UserService{
     }
 
     @Override
-    public void updateOTPLinkSentStatus(String token_id,String status,String remarks){
-        otpVerificationDao.updateOTPLinkSentStatus(token_id,status, new Date(),remarks);
+    public void updateOTPLinkSentStatus(String token_id,String status,String remarks,String shortedURL){
+        otpVerificationDao.updateOTPLinkSentStatus(token_id,status, new Date(),remarks,shortedURL);
     }
 
     @Override

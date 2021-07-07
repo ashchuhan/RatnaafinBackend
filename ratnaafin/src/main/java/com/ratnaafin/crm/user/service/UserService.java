@@ -113,12 +113,12 @@ public interface UserService {
     //added on 30/04/2021 SANJAY
     OtpVerificationDtl findOTPDetailByTokenID(String tokenID);
     List<OtpVerificationDtl> findPendingOTPLinkDetail();
-    void updateOTPLinkSentStatus(String token_id, String status,String remarks);
+    void updateOTPLinkSentStatus(String token_id, String status,String remarks,String shortedURL);
     //added on 30/04/2021 END
 
     //EquifaxAPILogDao-modified and added on: 11/06/2021
     List<EquifaxAPILog> findEquifaxPendingLinkRecord();
-    void updateEqfxOTPLinkStatus(String token_id, String status,String remarks);
+    void updateEqfxOTPLinkStatus(String token_id, String status,String remarks,String shortedURL);
     EquifaxAPILog findEquifaxDetailByTokenId(String tokenID);
     void updateEquifaxAPILog(String token_id,String req_status, String res_status,String res_data,String errorCode,String errorDesc);
     //url shortner method

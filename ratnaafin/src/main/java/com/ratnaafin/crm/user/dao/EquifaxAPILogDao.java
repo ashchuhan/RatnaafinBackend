@@ -20,6 +20,6 @@ public interface EquifaxAPILogDao extends CrudRepository<EquifaxAPILog,String> {
     void updateEquifaxAPILog(String token_id,String req_status,String res_status, String res_data, Date modifyDate,String errorCode, String errorDesc);
 
     @Modifying
-    @Query("update Equifax_api_log_new u set u.link_sent_status = ?2, u.error_desc = ?3, u.link_sent_date = ?4 where u.token_id = ?1" )
-    void updateEqfxOTPLinkStatus(String token_id, String status, String remarks,Date sentDate);
+    @Query("update Equifax_api_log_new u set u.link_sent_status = ?2, u.error_desc = ?3, u.shorted_link = ?4, u.link_sent_date = ?5 where u.token_id = ?1" )
+    void updateEqfxOTPLinkStatus(String token_id, String status, String remarks,String shortedURL,Date sentDate);
 }

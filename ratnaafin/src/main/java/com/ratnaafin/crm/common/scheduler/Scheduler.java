@@ -301,7 +301,7 @@ public class Scheduler {
                         shortURL = userService.getShortURL(tokenID,internalLink);
                         if(shortURL.equals("0")){
                             //Update "otp_verification_dtl"
-                            userService.updateEqfxOTPLinkStatus(tokenID,"F","Error in Service:URL shortener");
+                            userService.updateEqfxOTPLinkStatus(tokenID,"F","Error in Service:URL shortener",null);
                             continue;
                         }
                     }
@@ -318,7 +318,7 @@ public class Scheduler {
                             inParam.put("obj_name",objectName);
                             inParam.put("error_flag",errorFlag);
                             //Update "otp_verification_dtl"
-                            userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg);
+                            userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg,shortURL);
                             outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                             continue;
                         }
@@ -331,7 +331,7 @@ public class Scheduler {
                             inParam.put("obj_name",objectName);
                             inParam.put("error_flag",errorFlag);
                             //Update "otp_verification_dtl"
-                            userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg);
+                            userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg,shortURL);
                             outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                             continue;
                         }
@@ -344,7 +344,7 @@ public class Scheduler {
                             inParam.put("obj_name",objectName);
                             inParam.put("error_flag",errorFlag);
                             //Update "otp_verification_dtl"
-                            userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg);
+                            userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg,shortURL);
                             outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                             continue;
                         }
@@ -397,7 +397,7 @@ public class Scheduler {
                                         remarks = responseMessage;
                                     }
                                     //Update "otp_verification_dtl"
-                                    userService.updateEqfxOTPLinkStatus(tokenID,linkSentStatus,remarks);
+                                    userService.updateEqfxOTPLinkStatus(tokenID,linkSentStatus,remarks,shortURL);
                                 }catch (JSONException e){
                                     errorFlag = "E";
                                     errorMessage = "JSONException:"+e.getMessage();
@@ -407,7 +407,7 @@ public class Scheduler {
                                     inParam.put("obj_name",objectName);
                                     inParam.put("error_flag",errorFlag);
                                     //Update "otp_verification_dtl"
-                                    userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg);
+                                    userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg,shortURL);
                                     outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                                     e.printStackTrace();
                                     continue;
@@ -427,7 +427,7 @@ public class Scheduler {
                                 }
                                 //Update "otp_verification_dtl"
                                 remarks = responseMessage==null||responseMessage.isEmpty()?apiResult.substring(0,3999):responseMessage;
-                                userService.updateEqfxOTPLinkStatus(tokenID,"F",remarks);
+                                userService.updateEqfxOTPLinkStatus(tokenID,"F",remarks,shortURL);
                             }
                             //insert api log
                             inParam = new HashMap();
@@ -448,7 +448,7 @@ public class Scheduler {
                             inParam.put("obj_name",objectName);
                             inParam.put("error_flag",errorFlag);
                             //Update "otp_verification_dtl"
-                            userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg);
+                            userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg,shortURL);
                             outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                             e.printStackTrace();
                             continue;
@@ -462,7 +462,7 @@ public class Scheduler {
                         inParam.put("obj_name",objectName);
                         inParam.put("error_flag",errorFlag);
                         //Update "otp_verification_dtl"
-                        userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg);
+                        userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg,shortURL);
                         outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                         continue;
                     }
@@ -475,7 +475,7 @@ public class Scheduler {
                         shortURL = userService.getShortURL(tokenID,internalLink);
                         if(shortURL.equals("0")){
                             //Update "otp_verification_dtl"
-                            userService.updateEqfxOTPLinkStatus(tokenID,"F","Error in Service:URL shortener");
+                            userService.updateEqfxOTPLinkStatus(tokenID,"F","Error in Service:URL shortener",null);
                             continue;
                         }
                     }
@@ -491,7 +491,7 @@ public class Scheduler {
                             inParam.put("obj_name",objectName);
                             inParam.put("error_flag",errorFlag);
                             //Update "otp_verification_dtl"
-                            userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg);
+                            userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg,shortURL);
                             outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                             continue;
                         }
@@ -504,7 +504,7 @@ public class Scheduler {
                             inParam.put("obj_name",objectName);
                             inParam.put("error_flag",errorFlag);
                             //Update "otp_verification_dtl"
-                            userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg);
+                            userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg,shortURL);
                             outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                             continue;
                         }
@@ -517,7 +517,7 @@ public class Scheduler {
                             inParam.put("obj_name",objectName);
                             inParam.put("error_flag",errorFlag);
                             //Update "otp_verification_dtl"
-                            userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg);
+                            userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg,shortURL);
                             outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                             continue;
                         }
@@ -571,7 +571,7 @@ public class Scheduler {
                                         remarks = responseMessage;
                                     }
                                     //Update "otp_verification_dtl"
-                                    userService.updateEqfxOTPLinkStatus(tokenID,linkSentStatus,remarks);
+                                    userService.updateEqfxOTPLinkStatus(tokenID,linkSentStatus,remarks,shortURL);
                                 }catch (JSONException e){
                                     errorFlag = "E";
                                     errorMessage = "JSONException:"+e.getMessage();
@@ -581,7 +581,7 @@ public class Scheduler {
                                     inParam.put("obj_name",objectName);
                                     inParam.put("error_flag",errorFlag);
                                     //Update "otp_verification_dtl"
-                                    userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg);
+                                    userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg,shortURL);
                                     outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                                     e.printStackTrace();
                                     continue;
@@ -601,7 +601,7 @@ public class Scheduler {
                                 }
                                 //Update "otp_verification_dtl"
                                 remarks = responseMessage==null||responseMessage.isEmpty()?apiResult.substring(0,3999):responseMessage;
-                                userService.updateEqfxOTPLinkStatus(tokenID,"F",remarks);
+                                userService.updateEqfxOTPLinkStatus(tokenID,"F",remarks,shortURL);
                             }
                             //insert api log
                             inParam = new HashMap();
@@ -623,7 +623,7 @@ public class Scheduler {
                             inParam.put("obj_name",objectName);
                             inParam.put("error_flag",errorFlag);
                             //Update "otp_verification_dtl"
-                            userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg);
+                            userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg,shortURL);
                             outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                             e.printStackTrace();
                             continue;
@@ -637,7 +637,7 @@ public class Scheduler {
                         inParam.put("obj_name",objectName);
                         inParam.put("error_flag",errorFlag);
                         //Update "otp_verification_dtl"
-                        userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg);
+                        userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg,shortURL);
                         outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                         continue;
                     }
@@ -698,7 +698,7 @@ public class Scheduler {
                         if(shortURL.equals("0")){
                             Utility.print("failed to short url");
                             //Update "otp_verification_dtl"
-                            userService.updateOTPLinkSentStatus(tokenID,"F","Error in Service:URL shortener");
+                            userService.updateOTPLinkSentStatus(tokenID,"F","Error in Service:URL shortener",null);
                             continue;
                         }
                     }
@@ -721,7 +721,7 @@ public class Scheduler {
                             inParam.put("obj_name",objectName);
                             inParam.put("error_flag",errorFlag);
                             //Update "otp_verification_dtl"
-                            userService.updateOTPLinkSentStatus(tokenID,"F",g_error_msg);
+                            userService.updateOTPLinkSentStatus(tokenID,"F",g_error_msg,shortURL);
                             outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                             continue;
                         }
@@ -734,7 +734,7 @@ public class Scheduler {
                             inParam.put("obj_name",objectName);
                             inParam.put("error_flag",errorFlag);
                             //Update "otp_verification_dtl"
-                            userService.updateOTPLinkSentStatus(tokenID,"F",g_error_msg);
+                            userService.updateOTPLinkSentStatus(tokenID,"F",g_error_msg,shortURL);
                             outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                             continue;
                         }
@@ -747,7 +747,7 @@ public class Scheduler {
                             inParam.put("obj_name",objectName);
                             inParam.put("error_flag",errorFlag);
                             //Update "otp_verification_dtl"
-                            userService.updateOTPLinkSentStatus(tokenID,"F",g_error_msg);
+                            userService.updateOTPLinkSentStatus(tokenID,"F",g_error_msg,shortURL);
                             outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                             continue;
                         }
@@ -800,7 +800,7 @@ public class Scheduler {
                                         remarks = responseMessage;
                                     }
                                     //Update "otp_verification_dtl"
-                                    userService.updateOTPLinkSentStatus(tokenID,linkSentStatus,remarks);
+                                    userService.updateOTPLinkSentStatus(tokenID,linkSentStatus,remarks,shortURL);
                                 }catch (JSONException e){
                                     errorFlag = "E";
                                     errorMessage = "JSONException:"+e.getMessage();
@@ -810,7 +810,7 @@ public class Scheduler {
                                     inParam.put("obj_name",objectName);
                                     inParam.put("error_flag",errorFlag);
                                     //Update "otp_verification_dtl"
-                                    userService.updateOTPLinkSentStatus(tokenID,"F",g_error_msg);
+                                    userService.updateOTPLinkSentStatus(tokenID,"F",g_error_msg,shortURL);
                                     outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                                     e.printStackTrace();
                                     continue;
@@ -830,7 +830,7 @@ public class Scheduler {
                                 }
                                 remarks = responseMessage==null||responseMessage.isEmpty()?apiResult.substring(0,3999):responseMessage;
                                 //Update "otp_verification_dtl"
-                                userService.updateOTPLinkSentStatus(tokenID,"F",remarks);
+                                userService.updateOTPLinkSentStatus(tokenID,"F",remarks,shortURL);
                             }
                             //insert api log
                             inParam = new HashMap();
@@ -851,7 +851,7 @@ public class Scheduler {
                             inParam.put("obj_name",objectName);
                             inParam.put("error_flag",errorFlag);
                             //Update "otp_verification_dtl"
-                            userService.updateOTPLinkSentStatus(tokenID,"F",g_error_msg);
+                            userService.updateOTPLinkSentStatus(tokenID,"F",g_error_msg,shortURL);
                             outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                             e.printStackTrace();
                             continue;
@@ -865,7 +865,7 @@ public class Scheduler {
                         inParam.put("obj_name",objectName);
                         inParam.put("error_flag",errorFlag);
                         //Update "otp_verification_dtl"
-                        userService.updateOTPLinkSentStatus(tokenID,"F",g_error_msg);
+                        userService.updateOTPLinkSentStatus(tokenID,"F",g_error_msg,shortURL);
                         outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                         continue;
                     }
@@ -891,13 +891,12 @@ public class Scheduler {
                     sysParaMst_internal_link = userService.getParaVal("9999","9999",202);
                     internalLink = sysParaMst_internal_link.getPara_value();
                     internalLink = internalLink.replace("<tokenID>",tokenID);
-                    shortURL = userService.getShortURL(tokenID,internalLink);
                     if(shortURL==null||shortURL.trim().isEmpty()){
                         shortURL = userService.getShortURL(tokenID,internalLink);
                         if(shortURL.equals("0")){
                             Utility.print("failed to short url");
                             //Update "otp_verification_dtl"
-                            userService.updateOTPLinkSentStatus(tokenID,"F","Error in Service:URL shortener");
+                            userService.updateOTPLinkSentStatus(tokenID,"F","Error in Service:URL shortener",null);
                             continue;
                         }
                     }
@@ -919,7 +918,7 @@ public class Scheduler {
                             inParam.put("obj_name",objectName);
                             inParam.put("error_flag",errorFlag);
                             //Update "otp_verification_dtl"
-                            userService.updateOTPLinkSentStatus(tokenID,"F",g_error_msg);
+                            userService.updateOTPLinkSentStatus(tokenID,"F",g_error_msg,shortURL);
                             outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                             continue;
                         }
@@ -932,7 +931,7 @@ public class Scheduler {
                             inParam.put("obj_name",objectName);
                             inParam.put("error_flag",errorFlag);
                             //Update "otp_verification_dtl"
-                            userService.updateOTPLinkSentStatus(tokenID,"F",g_error_msg);
+                            userService.updateOTPLinkSentStatus(tokenID,"F",g_error_msg,shortURL);
                             outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                             continue;
                         }
@@ -945,7 +944,7 @@ public class Scheduler {
                             inParam.put("obj_name",objectName);
                             inParam.put("error_flag",errorFlag);
                             //Update "otp_verification_dtl"
-                            userService.updateOTPLinkSentStatus(tokenID,"F",g_error_msg);
+                            userService.updateOTPLinkSentStatus(tokenID,"F",g_error_msg,shortURL);
                             outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                             continue;
                         }
@@ -998,7 +997,7 @@ public class Scheduler {
                                         remarks = responseMessage;
                                     }
                                     //Update "otp_verification_dtl"
-                                    userService.updateOTPLinkSentStatus(tokenID,linkSentStatus,remarks);
+                                    userService.updateOTPLinkSentStatus(tokenID,linkSentStatus,remarks,shortURL);
                                 }catch (JSONException e){
                                     errorFlag = "E";
                                     errorMessage = "JSONException:"+e.getMessage();
@@ -1008,7 +1007,7 @@ public class Scheduler {
                                     inParam.put("obj_name",objectName);
                                     inParam.put("error_flag",errorFlag);
                                     //Update "otp_verification_dtl"
-                                    userService.updateOTPLinkSentStatus(tokenID,"F",g_error_msg);
+                                    userService.updateOTPLinkSentStatus(tokenID,"F",g_error_msg,shortURL);
                                     outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                                     e.printStackTrace();
                                     continue;
@@ -1028,7 +1027,7 @@ public class Scheduler {
                                 }
                                 remarks = responseMessage==null||responseMessage.isEmpty()?apiResult.substring(0,3999):responseMessage;
                                 //Update "otp_verification_dtl"
-                                userService.updateOTPLinkSentStatus(tokenID,"F",remarks);
+                                userService.updateOTPLinkSentStatus(tokenID,"F",remarks,shortURL);
                             }
                             //insert api log
                             inParam = new HashMap();
@@ -1050,7 +1049,7 @@ public class Scheduler {
                             inParam.put("obj_name",objectName);
                             inParam.put("error_flag",errorFlag);
                             //Update "otp_verification_dtl"
-                            userService.updateOTPLinkSentStatus(tokenID,"F",g_error_msg);
+                            userService.updateOTPLinkSentStatus(tokenID,"F",g_error_msg,shortURL);
                             outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                             e.printStackTrace();
                             continue;
@@ -1064,7 +1063,7 @@ public class Scheduler {
                         inParam.put("obj_name",objectName);
                         inParam.put("error_flag",errorFlag);
                         //Update "otp_verification_dtl"
-                        userService.updateOTPLinkSentStatus(tokenID,"F",g_error_msg);
+                        userService.updateOTPLinkSentStatus(tokenID,"F",g_error_msg,shortURL);
                         outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                         continue;
                     }
