@@ -18,7 +18,7 @@ public interface OtpVerificationDao extends CrudRepository<OtpVerificationDtl,St
     List<OtpVerificationDtl> findPendingOTPLinkDetail();
 
     @Modifying
-    @Query("update otp_verification_dtl u set u.link_sent_status = ?2, u.link_sent_date = ?3, u.remarks = ?4  where u.token_id = ?1")
-    void updateOTPLinkSentStatus(String token_id, String status, Date sentDate, String remarks);
+    @Query("update otp_verification_dtl u set u.link_sent_status = ?2, u.link_sent_date = ?3, u.remarks = ?4, u.shorted_link = ?5  where u.token_id = ?1")
+    void updateOTPLinkSentStatus(String token_id, String status, Date sentDate, String remarks,String shortedURL);
 
 }
