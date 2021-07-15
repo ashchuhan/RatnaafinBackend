@@ -325,6 +325,68 @@ public class UserController {
                 null);
     }
 
+    //common preview of file(s)
+    @RequestMapping(method = RequestMethod.POST, value = "/{module}/{moduleCategory}/{action}/preview")
+    public void filePreview(@PathVariable(name = "module") String module,
+                            @PathVariable(name = "moduleCategory") String moduleCategory,
+                            @PathVariable(name = "action") String action,
+                            @RequestBody String requestData, HttpServletResponse response, OAuth2Authentication authentication)
+            throws IOException {
+        Utility.print("Preview module");
+        SimpleDateFormat customizedDate = new SimpleDateFormat("yyyyMMdd");
+        SimpleDateFormat customizedTime = new SimpleDateFormat("_HHmmss");
+        String dateStr = customizedDate.format(new Date());
+        String timeStr = customizedTime.format(new Date());
+        String userName = "null", result = null,channel="W";
+        String fileName="file".concat(dateStr + timeStr);
+        InputStream inputStream = null;
+        User user = (User) authentication.getUserAuthentication().getPrincipal();
+        userName = user.getUsername();
+        Blob fileBlob = null;
+        long tranCD = 0;
+        String event = "preview";
+        JSONObject jsonObject = null, jsonRequestData=null;
+        try{
+            userService.saveJsonLog(channel, "req", action, requestData, userName, module);
+            jsonObject = new JSONObject(requestData);
+            jsonRequestData = jsonObject.getJSONObject("request_data");
+            if(jsonRequestData.has("tranCD")){
+                tranCD = jsonRequestData.getLong("tranCD");
+            }
+            switch (module+"/"+moduleCategory+"/"+action+"/"+event){
+                case "lead/document/sanction/preview":
+                    LeadSanctionDtl leadSanctionDtl;
+                    leadSanctionDtl = userService.findSanctionDtlById(tranCD);
+
+                    fileBlob = new SerialBlob(leadSanctionDtl.getSanction_file());
+                   if(fileBlob!=null){
+                        inputStream = fileBlob.getBinaryStream();
+                        response = userService.startFileDownload(response, inputStream, fileName);
+                    }
+                    break;
+                case "lead/document/termsheet/preview":
+                    LeadTermSheetDtl leadTermSheetDtl = new LeadTermSheetDtl();
+                    leadTermSheetDtl = userService.findTermSheetDtlById(tranCD);
+                    fileBlob = new SerialBlob(leadTermSheetDtl.getTermsheet_file());
+                    if(fileBlob!=null){
+                        inputStream = fileBlob.getBinaryStream();
+                        response = userService.startFileDownload(response, inputStream, fileName);
+                    }
+                    break;
+            }
+        }catch (JSONException e){
+            e.printStackTrace();
+            userService.getJsonError("-99", "Error-JSONException", g_error_msg,
+                    "Error while reading metaData:" + e.getMessage(), "99", channel, action, requestData,
+                    userName, module, "E");
+        }catch (Exception e){
+            e.printStackTrace();
+            userService.getJsonError("-99", "Error-Exception", g_error_msg,
+                    "Error while reading metaData:" + e.getMessage(), "99", channel, action, requestData,
+                    userName, module, "E");
+        }
+    }
+
     /***********************
      * FOR MULTIPART FORM DATA
      *****************************************/
@@ -5843,6 +5905,7 @@ public class UserController {
             // save request data
             userService.saveJsonLog(channel, "req", action, requestData, userName, module);
             MultipartFile file = (MultipartFile)files.get(0) ;
+//            Blob blobFile = new SerialBlob(file.getBytes());
             switch(action){
                 case "termsheet/upload":
                     blobID = file.getOriginalFilename();
@@ -5887,4 +5950,5 @@ public class UserController {
         }
 
     }
+
 }

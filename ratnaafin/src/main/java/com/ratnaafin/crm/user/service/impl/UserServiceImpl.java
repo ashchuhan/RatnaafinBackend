@@ -2309,4 +2309,12 @@ public class UserServiceImpl implements UserService{
     public void updateSanctionFile(Long tran_cd, byte[] file, String userName) {
         leadSanctionDao.updateSanctionFile(tran_cd,file,userName,new Date());
     }
+
+    public LeadSanctionDtl findSanctionDtlById(Long id) {
+        return leadSanctionDao.findSanctionDtlById(id);
+    }
+
+    public LeadTermSheetDtl findTermSheetDtlById(Long id) {
+        return leadTermSheetDao.findTermSheetDtlById(id);
+    }
 }

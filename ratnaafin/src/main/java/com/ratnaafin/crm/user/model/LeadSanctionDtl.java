@@ -1,6 +1,7 @@
 package com.ratnaafin.crm.user.model;
 
 import javax.persistence.*;
+import java.sql.Blob;
 import java.util.Date;
 
 @Table(name = "los_lead_sanction_dtl")
