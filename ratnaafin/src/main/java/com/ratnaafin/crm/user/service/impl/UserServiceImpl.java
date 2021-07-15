@@ -187,6 +187,12 @@ public class UserServiceImpl implements UserService{
     @Autowired
     private ApiWebhookActivityDao apiWebhookActivityDao;
 
+    @Autowired
+    private LeadTermSheetDao leadTermSheetDao;
+
+    @Autowired
+    private LeadSanctionDao leadSanctionDao;
+
     public List<UserDto> findAll() {
         List<User_master> list = new ArrayList<>();
         userDao.findAll().iterator().forEachRemaining(list::add);
@@ -2292,5 +2298,15 @@ public class UserServiceImpl implements UserService{
 
     public List<PerfiosReqResDtl> findPendingDocumentProcess() {
         return perfiosReqResDao.findPendingDocumentProcess();
+    }
+
+    //added on dt: 13/07/2021
+    public void updateTermsheetFile(Long tranCD,byte[] file,String userName){
+        leadTermSheetDao.updateTermsheetFile(tranCD,file,userName,new Date());
+    }
+
+    //added on 15/07/2021
+    public void updateSanctionFile(Long tran_cd, byte[] file, String userName) {
+        leadSanctionDao.updateSanctionFile(tran_cd,file,userName,new Date());
     }
 }

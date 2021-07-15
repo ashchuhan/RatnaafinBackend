@@ -131,4 +131,7 @@ public interface UserService {
     List<ApiWebhookActivity> findWebhookProcess();
     void updateWebhookProcess(Long tranCd,String processStatus,String processResponse,String webhookFlag,String remarks);
     List<PerfiosReqResDtl> findPendingDocumentProcess();
+    //added on dt:13/07/2021
+    void updateTermsheetFile(Long tranCD,byte[] file,String userName);
+    void updateSanctionFile(Long tran_cd, byte[] file, String userName);
 }
