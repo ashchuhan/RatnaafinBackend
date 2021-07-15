@@ -412,6 +412,37 @@ public class UserController {
         }
         return result;
     }
+    //common file upload process
+    @RequestMapping(method = RequestMethod.POST, value = "/{module}/{moduleCategory}/{action}/{event}", produces = {
+            "application/json",
+            "application/json" }, consumes = { MediaType.MULTIPART_FORM_DATA_VALUE, MediaType.TEXT_PLAIN_VALUE })
+    public String funcInternalFetcher(@PathVariable(name = "module") String module,
+                                      @PathVariable(name = "moduleCategory") String moduleCategory, @PathVariable(name = "action") String action,
+                                      @PathVariable(name = "event") String event,
+                                      @RequestParam(value = "id") String id,
+                                      @RequestParam("file") List<MultipartFile> files,
+                                      @RequestParam(value = "metaData",required = false) String metaData,
+                                      OAuth2Authentication authentication) {
+        String userName = "null", result = null,entityType = "L";
+        User user = (User) authentication.getUserAuthentication().getPrincipal();
+        userName = user.getUsername();
+        module = module.toLowerCase();
+        moduleCategory = moduleCategory.toLowerCase();
+        action = action.toLowerCase();
+        event = event.toLowerCase();
+        metaData = metaData==null||metaData.isEmpty()?"{}":metaData;
+        // funcBankDocumentUpload(module,moduleCategory,action,event,null,userName,refID,srID,files,metaData);
+        switch (module + "/" + moduleCategory + "/" + action + "/" + event) {
+            case "lead/document/sanction/upload":
+            case "lead/document/termsheet/upload":
+                result = funcCommonFileUpload(module, moduleCategory, action, event, userName, Long.parseLong(id),
+                        files, metaData);
+                break;
+            default:
+                result = "no_case";
+        }
+        return result;
+    }
 
     @RequestMapping(method = RequestMethod.POST,value = "/{module}/{moduleCategory}/{action}/{event}",produces = {"application/json","application/json"})
     public String funcInternalFetcher(	@PathVariable(name = "module") String module,
@@ -5775,4 +5806,85 @@ public class UserController {
         return response;
     }
 
+    public String funcCommonFileUpload(String module, String moduleCategory, String action, String event, String userName, Long id,  List<MultipartFile> files, String metaData) {
+        String requestData = "MULTIPART_FORM_DATA", response = null, channel = "W", exceptionMessage =null;
+        String userID = userService.getLoginUserID(userName);
+        int fileCount = 0;
+
+        JSONObject jsonObject, jsonObject1, jsonObject2;
+        //JSONArray jsonArray = new JSONArray();
+        jsonObject = new JSONObject();
+        jsonObject1 = new JSONObject();
+        jsonObject2 = new JSONObject();
+//        jsonMetaData = new JSONObject();
+        // common parameter
+        String fileName = null, filePwd = null, fileExt = null, remarks = null, password = null, blobID = null,
+                docID = null;
+
+        //lead/document/sanction/upload
+        //{module}/{moduleCategory}/action/event
+        module = module + "/" + moduleCategory;
+        action = action + "/" + event;
+
+        if (files == null || files.isEmpty() || files.get(0).getSize() <= 0) {
+            return userService.getJsonError("-99", "Not found any file.", "File Not Found.",
+                    "Not found any file to be upload.", "99", channel, action, requestData, userName, module, "U");
+        }
+
+        fileCount = files.toArray().length;
+        if (fileCount>1){
+            return userService.getJsonError("-99", "Only one file can be accept.", "Only one file can be accept.",
+                    "Only one file can be accept.", "99", channel, action, requestData, userName, module, "U");
+        }
+
+        try {
+            jsonObject = new JSONObject(metaData);
+            Utility.print("Additional info(MetaData):" + jsonObject.toString());
+            // save request data
+            userService.saveJsonLog(channel, "req", action, requestData, userName, module);
+            MultipartFile file = (MultipartFile)files.get(0) ;
+            switch(action){
+                case "termsheet/upload":
+                    blobID = file.getOriginalFilename();
+                    Utility.print("file going to be update for TermSheet:"+blobID);
+                    //update
+                    userService.updateTermsheetFile(id,file.getBytes(),userID);
+                    jsonObject1.put("status","success");
+                    jsonObject1.put("message","TermSheet updated");
+
+                    Utility.print("TermSheet updated");
+                    break;
+                case "sanction/upload":
+                    blobID = file.getOriginalFilename();
+                    Utility.print("file going to be update for Sanction:"+blobID);
+                    //update
+                    userService.updateSanctionFile(id,file.getBytes(),userID);
+                    jsonObject1.put("status","success");
+                    jsonObject1.put("message","Sanction updated");
+
+                    Utility.print("Sanction updated");
+                    break;
+                default:
+                    return "INVALID_CASE:"+action;
+            }
+            jsonObject2.put("status", "0");
+            jsonObject2.put("response_data", jsonObject1);
+            response = jsonObject2.toString();
+            userService.saveJsonLog(channel, "res", action, response, userName, module);
+            return response;
+        }catch(JSONException e){
+            e.printStackTrace();
+            return userService.getJsonError("-99", "JSONException..!", g_error_msg, e.getMessage(), "99",
+                    channel, action, requestData, userName, module, "E");
+        }
+        catch(Exception e){
+            e.printStackTrace();
+            exceptionMessage = e.getMessage();
+            exceptionMessage = exceptionMessage==null?"0":exceptionMessage;
+            return userService.getJsonError("-99", "Failed to upload", g_error_msg,
+                    exceptionMessage,"99", channel, action, requestData, userName,
+                    module, "E");
+        }
+
+    }
 }
