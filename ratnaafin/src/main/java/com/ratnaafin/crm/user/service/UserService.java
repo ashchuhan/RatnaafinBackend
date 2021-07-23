@@ -137,4 +137,6 @@ public interface UserService {
     //added on dt:15/07/2021
     LeadSanctionDtl findSanctionDtlById(Long id);
     LeadTermSheetDtl findTermSheetDtlById(Long id);
+    //added on: 22/07/2021
+    void updateEquifaxReport(Blob reportData, String tokenID);
 }

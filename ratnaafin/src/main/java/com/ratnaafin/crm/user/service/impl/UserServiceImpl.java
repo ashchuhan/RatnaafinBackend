@@ -2317,4 +2317,8 @@ public class UserServiceImpl implements UserService{
     public LeadTermSheetDtl findTermSheetDtlById(Long id) {
         return leadTermSheetDao.findTermSheetDtlById(id);
     }
+
+    public void updateEquifaxReport(Blob reportData, String tokenID){
+        equifaxAPILogDao.updateEquifaxReport(reportData,new Date(),tokenID);
+    }
 }

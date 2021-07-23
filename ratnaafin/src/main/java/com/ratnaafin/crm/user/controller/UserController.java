@@ -11,6 +11,7 @@ import com.ratnaafin.crm.user.model.*;
 import com.ratnaafin.crm.user.service.UserService;
 import com.ratnaafin.crm.user.service.impl.UserServiceImpl;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.compress.utils.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -39,6 +40,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.sql.rowset.serial.SerialBlob;
 import javax.sql.rowset.serial.SerialException;
 import java.io.*;
+import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -215,6 +217,7 @@ public class UserController {
                                               HttpServletResponse response) throws IOException {
 
         String userName = "null",result = null;
+        Utility.print("third_party:"+third_party);
         User user = (User) userService.readAuth(tokenID).getUserAuthentication().getPrincipal();
         userName = user.getUsername();
         String module = "lead";
@@ -226,7 +229,11 @@ public class UserController {
         requestData =  "{\"request_data\": {\"docUUID\": "+new JSONArray(docUUID)+"}}\n";
         if(action.equalsIgnoreCase("perfios")){
             response = perfiosdocumentDownload(module,moduleCategory,userName,action,event,response,requestData,subEvent,null);
-        }else{
+        }else if(action.equalsIgnoreCase("equifaxreport")){
+            Utility.print("docUUID.get(0):"+docUUID.get(0));
+            equifaxReportDownload(module,moduleCategory,userName,action,event,docUUID.get(0),subEvent,response);
+        }
+        else{
             response = null;
         }
     }
@@ -270,8 +277,7 @@ public class UserController {
 
     @RequestMapping(method = RequestMethod.GET, value = "/lead/document/{document_type}/data/download")
     public void legalDocDownloadProcess(@PathVariable(name = "document_type") String document_type,
-                                        @RequestParam List<String> docUUID, @RequestParam String tokenID, HttpServletResponse response)
-            throws IOException {
+                                        @RequestParam List<String> docUUID, @RequestParam String tokenID, HttpServletResponse response) throws IOException {
 
         String userName = "null", result = null;
         User user = (User) userService.readAuth(tokenID).getUserAuthentication().getPrincipal();
@@ -5948,7 +5954,129 @@ public class UserController {
                     exceptionMessage,"99", channel, action, requestData, userName,
                     module, "E");
         }
-
     }
 
+    public void equifaxReportDownload( String module,String moduleCategory,String userName,String action,String event,String tokenID, String subEvent,HttpServletResponse response) throws IOException
+    {
+        String channel ="W";
+        String patternDate = "yyyyMMdd";
+        String patternTime = "HHmmssSS";
+        SimpleDateFormat simpleDateFormatDate = new SimpleDateFormat(patternDate);
+        SimpleDateFormat simpleDateFormatTime = new SimpleDateFormat(patternTime);
+        String date = simpleDateFormatDate.format(new Date());
+        String time = simpleDateFormatTime.format(new Date());
+        String fileName="creditReport.pdf",requestBody="{\"request_data\": {\"tokenID\": \""+tokenID+"\"}}";
+        Blob fileBlob = null;
+
+        action = action+"/"+event;
+        module = module+"/"+moduleCategory;
+        try {
+            Utility.print("Processing Equifax report");
+            JSONObject jsonRequestData = null,jsonObject=null,jsonReportMetaData=null;
+            Utility.print("tokenID:"+tokenID);
+            InputStream  inputStream =null,fileStream=null;
+            userService.saveJsonLog(channel,"req",action,requestBody,userName,module);
+            String fileExist = null,result=null,status=null;
+            HashMap inParam = new HashMap(),outParam;
+            inParam.put("action","get_equifax_report_metatdata");
+            inParam.put("jsonReqData",requestBody);
+            outParam = userService.callingDBObject("procedure","proc_calling_db_objects",inParam);
+            result = (String)outParam.get("result");
+            Utility.print("dbResult:\n"+result);
+            jsonObject = new JSONObject(result);
+            status = jsonObject.getString("status");
+            if(!status.equalsIgnoreCase("0")){
+                return;
+            }
+            jsonRequestData = jsonObject.getJSONObject("response_data");
+            fileExist      = jsonRequestData.getString("reportExist");
+            Utility.print("fileExist:"+fileExist);
+            if(fileExist.equalsIgnoreCase("Y")){
+                EquifaxAPILog equifaxAPILog = userService.findEquifaxDetailByTokenId(tokenID);
+                fileBlob = new SerialBlob(equifaxAPILog.getReport_data());
+                inputStream = fileBlob.getBinaryStream();
+                response = userService.startFileDownload(response,inputStream,fileName);
+                Utility.print("Report Found in system..!");
+                userService.saveJsonLog(channel,"res",action,"HTTP status:"+response.getStatus(),userName,module);
+            }else{
+                int paraCode = 31,filecount=0;
+                Blob blobData = null;
+                byte[] fileContents;
+                ByteArrayOutputStream fileOutput = new ByteArrayOutputStream();
+                byte[] fileBuffer = new byte[1024];
+
+                SysParaMst sysParaMst =userService.getParaVal("9999","9999",paraCode);
+                jsonReportMetaData = jsonRequestData.getJSONObject("reportMetaData");
+                String requestData = jsonReportMetaData.toString(),reportAPIPath=null;
+                Utility.print("jsonReportMetaData:\n"+jsonReportMetaData);
+                /**generate report**/
+                try {
+                    if(sysParaMst==null){
+                        Utility.print("Parameter Code Missing:"+paraCode);
+                        userService.getJsonError("-99","Parameter not found",g_error_msg,"Equifax Report API path is missing with para-code("+paraCode+")","99",channel,action,requestData,userName,module,"U");
+                        return;
+                    }
+                    reportAPIPath = sysParaMst.getPara_value();
+                    if(reportAPIPath==null){
+                        Utility.print("Parameter Code Missing:"+paraCode);
+                        userService.getJsonError("-99","Parameter not found",g_error_msg,"Equifax Report API path is missing with para-code("+paraCode+")","99",channel,action,requestData,userName,module,"U");
+                        return;
+                    }
+                    try {
+                        Utility.print("Generating Report...");
+                        URL reportURL = new URL(reportAPIPath);
+                        HttpURLConnection conn = (HttpURLConnection)reportURL.openConnection();
+                        conn.setRequestMethod("POST");
+                        conn.addRequestProperty("content-Type", "application/json");
+                        conn.setDoOutput(true);
+                        OutputStream os = conn.getOutputStream();
+                        os.write(requestData.getBytes());
+                        os.flush();
+                        os.close();
+                        Utility.print("API Response Code  :"+conn.getResponseCode());
+                        fileStream = conn.getInputStream();
+                        /**updating report**/
+                        //file data download
+                        Utility.print("fileStream.available():"+fileStream.available());
+                        while ((filecount = fileStream.read(fileBuffer)) != -1) {
+                            fileOutput.write(fileBuffer, 0, filecount);
+                        }
+                        fileContents = fileOutput.toByteArray();
+                        blobData = new SerialBlob(fileContents);
+                        Utility.print("BLOB data size:"+blobData.length());
+                        if (blobData.length() > 0) {
+                            Utility.print("Report Generated Successfully..!");
+                            userService.updateEquifaxReport(blobData,tokenID);
+                        }
+                        //setting up response
+                        inputStream = new ByteArrayInputStream(fileContents);
+                        Utility.print("inputStream.available():"+inputStream.available());
+                        userService.startFileDownload(response,inputStream,fileName);
+                        /**end**/
+                    }catch (MalformedURLException e) {
+                        e.printStackTrace();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }catch (JSONException e){
+            userService.getJsonError("-99","Error-JSONException",g_error_msg,e.getMessage(),"99",channel,action,requestBody,userName,module,"E");
+            response.sendError(500);
+            e.printStackTrace();
+        }
+        catch (SerialException e) {
+            userService.getJsonError("-99","Error-JSONException",g_error_msg,e.getMessage(),"99",channel,action,requestBody,userName,module,"E");
+            response.sendError(500);
+            e.printStackTrace();
+        } catch (SQLException e) {
+            userService.getJsonError("-99","Error-JSONException",g_error_msg,e.getMessage(),"99",channel,action,requestBody,userName,module,"E");
+            response.sendError(500);
+            e.printStackTrace();
+        }
+    }
 }

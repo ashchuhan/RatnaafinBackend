@@ -4,6 +4,7 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
+import java.sql.Blob;
 import java.util.Date;
 
 @Table(name = "equifax_api_log_new")
@@ -91,6 +92,9 @@ public class EquifaxAPILog {
 
     @Column(name = "SHORTED_LINK")
     private String shorted_link;
+
+    @Column(name = "REPORT_DATA")
+    private Blob report_data;
 
     public String getToken_id() {
         return token_id;
@@ -306,5 +310,13 @@ public class EquifaxAPILog {
 
     public void setShorted_link(String shorted_link) {
         this.shorted_link = shorted_link;
+    }
+
+    public Blob getReport_data() {
+        return report_data;
+    }
+
+    public void setReport_data(Blob report_data) {
+        this.report_data = report_data;
     }
 }

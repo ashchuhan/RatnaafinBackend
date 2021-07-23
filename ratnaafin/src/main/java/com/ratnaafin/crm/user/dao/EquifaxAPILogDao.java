@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 
+import java.sql.Blob;
 import java.util.Date;
 import java.util.List;
 
@@ -22,4 +23,8 @@ public interface EquifaxAPILogDao extends CrudRepository<EquifaxAPILog,String> {
     @Modifying
     @Query("update Equifax_api_log_new u set u.link_sent_status = ?2, u.error_desc = ?3, u.shorted_link = ?4, u.link_sent_date = ?5 where u.token_id = ?1" )
     void updateEqfxOTPLinkStatus(String token_id, String status, String remarks,String shortedURL,Date sentDate);
+
+    @Modifying
+    @Query("update Equifax_api_log_new u set u.report_data = ?1, u.last_modified_date = ?2 where u.token_id = ?3")
+    void updateEquifaxReport(Blob reportData, Date modifyDate, String tokenID);
 }

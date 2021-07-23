@@ -57,6 +57,8 @@ public class ResourceServerConfig extends ResourceServerConfigurerAdapter {
                 .antMatchers("/los/lead/document/other/data/download").permitAll()
                 .antMatchers("/los/lead/external/perfios/data/download").permitAll()
                 .antMatchers("/los/lead/external/corpository/data/download").permitAll()
+                .antMatchers("/los/lead/external/equifaxreport/data/download").permitAll()
+
 
 
                 .antMatchers("/los/lead/management/document/bank/data/download").permitAll()
