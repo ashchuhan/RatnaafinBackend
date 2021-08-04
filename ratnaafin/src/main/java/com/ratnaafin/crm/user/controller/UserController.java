@@ -10,6 +10,7 @@ import com.ratnaafin.crm.user.dto.UniqueIDDtlDto;
 import com.ratnaafin.crm.user.model.*;
 import com.ratnaafin.crm.user.service.UserService;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.compress.utils.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -39,6 +40,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.sql.rowset.serial.SerialBlob;
 import javax.sql.rowset.serial.SerialException;
 import java.io.*;
+import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -243,6 +245,7 @@ public class UserController {
                                               HttpServletResponse response) throws IOException {
 
         String userName = "null",result = null;
+        Utility.print("third_party:"+third_party);
         User user = (User) userService.readAuth(tokenID).getUserAuthentication().getPrincipal();
         userName = user.getUsername();
         String module = "lead";
@@ -254,7 +257,11 @@ public class UserController {
         requestData =  "{\"request_data\": {\"docUUID\": "+new JSONArray(docUUID)+"}}\n";
         if(action.equalsIgnoreCase("perfios")){
             response = perfiosdocumentDownload(module,moduleCategory,userName,action,event,response,requestData,subEvent,null);
-        }else{
+        }else if(action.equalsIgnoreCase("equifaxreport")){
+            Utility.print("docUUID.get(0):"+docUUID.get(0));
+            equifaxReportDownload(module,moduleCategory,userName,action,event,docUUID.get(0),subEvent,response);
+        }
+        else{
             response = null;
         }
     }
@@ -298,8 +305,7 @@ public class UserController {
 
     @RequestMapping(method = RequestMethod.GET, value = "/lead/document/{document_type}/data/download")
     public void legalDocDownloadProcess(@PathVariable(name = "document_type") String document_type,
-                                        @RequestParam List<String> docUUID, @RequestParam String tokenID, HttpServletResponse response)
-            throws IOException {
+                                        @RequestParam List<String> docUUID, @RequestParam String tokenID, HttpServletResponse response) throws IOException {
 
         String userName = "null", result = null;
         User user = (User) userService.readAuth(tokenID).getUserAuthentication().getPrincipal();
@@ -351,6 +357,68 @@ public class UserController {
         String subEvent = "preview";
         response = documentDownload(module, moduleCategory, userName, action, event, response, requestData, subEvent,
                 null);
+    }
+
+    //common preview of file(s)
+    @RequestMapping(method = RequestMethod.POST, value = "/{module}/{moduleCategory}/{action}/preview")
+    public void filePreview(@PathVariable(name = "module") String module,
+                            @PathVariable(name = "moduleCategory") String moduleCategory,
+                            @PathVariable(name = "action") String action,
+                            @RequestBody String requestData, HttpServletResponse response, OAuth2Authentication authentication)
+            throws IOException {
+        Utility.print("Preview module");
+        SimpleDateFormat customizedDate = new SimpleDateFormat("yyyyMMdd");
+        SimpleDateFormat customizedTime = new SimpleDateFormat("_HHmmss");
+        String dateStr = customizedDate.format(new Date());
+        String timeStr = customizedTime.format(new Date());
+        String userName = "null", result = null,channel="W";
+        String fileName="file".concat(dateStr + timeStr);
+        InputStream inputStream = null;
+        User user = (User) authentication.getUserAuthentication().getPrincipal();
+        userName = user.getUsername();
+        Blob fileBlob = null;
+        long tranCD = 0;
+        String event = "preview";
+        JSONObject jsonObject = null, jsonRequestData=null;
+        try{
+            userService.saveJsonLog(channel, "req", action, requestData, userName, module);
+            jsonObject = new JSONObject(requestData);
+            jsonRequestData = jsonObject.getJSONObject("request_data");
+            if(jsonRequestData.has("tranCD")){
+                tranCD = jsonRequestData.getLong("tranCD");
+            }
+            switch (module+"/"+moduleCategory+"/"+action+"/"+event){
+                case "lead/document/sanction/preview":
+                    LeadSanctionDtl leadSanctionDtl;
+                    leadSanctionDtl = userService.findSanctionDtlById(tranCD);
+
+                    fileBlob = new SerialBlob(leadSanctionDtl.getSanction_file());
+                   if(fileBlob!=null){
+                        inputStream = fileBlob.getBinaryStream();
+                        response = userService.startFileDownload(response, inputStream, fileName);
+                    }
+                    break;
+                case "lead/document/termsheet/preview":
+                    LeadTermSheetDtl leadTermSheetDtl = new LeadTermSheetDtl();
+                    leadTermSheetDtl = userService.findTermSheetDtlById(tranCD);
+                    fileBlob = new SerialBlob(leadTermSheetDtl.getTermsheet_file());
+                    if(fileBlob!=null){
+                        inputStream = fileBlob.getBinaryStream();
+                        response = userService.startFileDownload(response, inputStream, fileName);
+                    }
+                    break;
+            }
+        }catch (JSONException e){
+            e.printStackTrace();
+            userService.getJsonError("-99", "Error-JSONException", g_error_msg,
+                    "Error while reading metaData:" + e.getMessage(), "99", channel, action, requestData,
+                    userName, module, "E");
+        }catch (Exception e){
+            e.printStackTrace();
+            userService.getJsonError("-99", "Error-Exception", g_error_msg,
+                    "Error while reading metaData:" + e.getMessage(), "99", channel, action, requestData,
+                    userName, module, "E");
+        }
     }
 
     /***********************
@@ -434,6 +502,37 @@ public class UserController {
                 }
                 result = funcDocUploadProcess(module, moduleCategory, action, event, subEvent, null, userName, Long.parseLong(refID),
                         Long.parseLong(serialNo), files, metaData, action,entityType,categoryCD);
+                break;
+            default:
+                result = "no_case";
+        }
+        return result;
+    }
+    //common file upload process
+    @RequestMapping(method = RequestMethod.POST, value = "/{module}/{moduleCategory}/{action}/{event}", produces = {
+            "application/json",
+            "application/json" }, consumes = { MediaType.MULTIPART_FORM_DATA_VALUE, MediaType.TEXT_PLAIN_VALUE })
+    public String funcInternalFetcher(@PathVariable(name = "module") String module,
+                                      @PathVariable(name = "moduleCategory") String moduleCategory, @PathVariable(name = "action") String action,
+                                      @PathVariable(name = "event") String event,
+                                      @RequestParam(value = "id") String id,
+                                      @RequestParam("file") List<MultipartFile> files,
+                                      @RequestParam(value = "metaData",required = false) String metaData,
+                                      OAuth2Authentication authentication) {
+        String userName = "null", result = null,entityType = "L";
+        User user = (User) authentication.getUserAuthentication().getPrincipal();
+        userName = user.getUsername();
+        module = module.toLowerCase();
+        moduleCategory = moduleCategory.toLowerCase();
+        action = action.toLowerCase();
+        event = event.toLowerCase();
+        metaData = metaData==null||metaData.isEmpty()?"{}":metaData;
+        // funcBankDocumentUpload(module,moduleCategory,action,event,null,userName,refID,srID,files,metaData);
+        switch (module + "/" + moduleCategory + "/" + action + "/" + event) {
+            case "lead/document/sanction/upload":
+            case "lead/document/termsheet/upload":
+                result = funcCommonFileUpload(module, moduleCategory, action, event, userName, Long.parseLong(id),
+                        files, metaData);
                 break;
             default:
                 result = "no_case";
@@ -5803,4 +5902,209 @@ public class UserController {
         return response;
     }
 
+    public String funcCommonFileUpload(String module, String moduleCategory, String action, String event, String userName, Long id,  List<MultipartFile> files, String metaData) {
+        String requestData = "MULTIPART_FORM_DATA", response = null, channel = "W", exceptionMessage =null;
+        String userID = userService.getLoginUserID(userName);
+        int fileCount = 0;
+
+        JSONObject jsonObject, jsonObject1, jsonObject2;
+        //JSONArray jsonArray = new JSONArray();
+        jsonObject = new JSONObject();
+        jsonObject1 = new JSONObject();
+        jsonObject2 = new JSONObject();
+//        jsonMetaData = new JSONObject();
+        // common parameter
+        String fileName = null, filePwd = null, fileExt = null, remarks = null, password = null, blobID = null,
+                docID = null;
+
+        //lead/document/sanction/upload
+        //{module}/{moduleCategory}/action/event
+        module = module + "/" + moduleCategory;
+        action = action + "/" + event;
+
+        if (files == null || files.isEmpty() || files.get(0).getSize() <= 0) {
+            return userService.getJsonError("-99", "Not found any file.", "File Not Found.",
+                    "Not found any file to be upload.", "99", channel, action, requestData, userName, module, "U");
+        }
+
+        fileCount = files.toArray().length;
+        if (fileCount>1){
+            return userService.getJsonError("-99", "Only one file can be accept.", "Only one file can be accept.",
+                    "Only one file can be accept.", "99", channel, action, requestData, userName, module, "U");
+        }
+
+        try {
+            jsonObject = new JSONObject(metaData);
+            Utility.print("Additional info(MetaData):" + jsonObject.toString());
+            // save request data
+            userService.saveJsonLog(channel, "req", action, requestData, userName, module);
+            MultipartFile file = (MultipartFile)files.get(0) ;
+//            Blob blobFile = new SerialBlob(file.getBytes());
+            switch(action){
+                case "termsheet/upload":
+                    blobID = file.getOriginalFilename();
+                    Utility.print("file going to be update for TermSheet:"+blobID);
+                    //update
+                    userService.updateTermsheetFile(id,file.getBytes(),userID);
+                    jsonObject1.put("status","success");
+                    jsonObject1.put("message","TermSheet updated");
+
+                    Utility.print("TermSheet updated");
+                    break;
+                case "sanction/upload":
+                    blobID = file.getOriginalFilename();
+                    Utility.print("file going to be update for Sanction:"+blobID);
+                    //update
+                    userService.updateSanctionFile(id,file.getBytes(),userID);
+                    jsonObject1.put("status","success");
+                    jsonObject1.put("message","Sanction updated");
+
+                    Utility.print("Sanction updated");
+                    break;
+                default:
+                    return "INVALID_CASE:"+action;
+            }
+            jsonObject2.put("status", "0");
+            jsonObject2.put("response_data", jsonObject1);
+            response = jsonObject2.toString();
+            userService.saveJsonLog(channel, "res", action, response, userName, module);
+            return response;
+        }catch(JSONException e){
+            e.printStackTrace();
+            return userService.getJsonError("-99", "JSONException..!", g_error_msg, e.getMessage(), "99",
+                    channel, action, requestData, userName, module, "E");
+        }
+        catch(Exception e){
+            e.printStackTrace();
+            exceptionMessage = e.getMessage();
+            exceptionMessage = exceptionMessage==null?"0":exceptionMessage;
+            return userService.getJsonError("-99", "Failed to upload", g_error_msg,
+                    exceptionMessage,"99", channel, action, requestData, userName,
+                    module, "E");
+        }
+    }
+
+    public void equifaxReportDownload( String module,String moduleCategory,String userName,String action,String event,String tokenID, String subEvent,HttpServletResponse response) throws IOException
+    {
+        String channel ="W";
+        String patternDate = "yyyyMMdd";
+        String patternTime = "HHmmssSS";
+        SimpleDateFormat simpleDateFormatDate = new SimpleDateFormat(patternDate);
+        SimpleDateFormat simpleDateFormatTime = new SimpleDateFormat(patternTime);
+        String date = simpleDateFormatDate.format(new Date());
+        String time = simpleDateFormatTime.format(new Date());
+        String fileName="creditReport.pdf",requestBody="{\"request_data\": {\"tokenID\": \""+tokenID+"\"}}";
+        Blob fileBlob = null;
+
+        action = action+"/"+event;
+        module = module+"/"+moduleCategory;
+        try {
+            Utility.print("Processing Equifax report");
+            JSONObject jsonRequestData = null,jsonObject=null,jsonReportMetaData=null;
+            Utility.print("tokenID:"+tokenID);
+            InputStream  inputStream =null,fileStream=null;
+            userService.saveJsonLog(channel,"req",action,requestBody,userName,module);
+            String fileExist = null,result=null,status=null;
+            HashMap inParam = new HashMap(),outParam;
+            inParam.put("action","get_equifax_report_metatdata");
+            inParam.put("jsonReqData",requestBody);
+            outParam = userService.callingDBObject("procedure","proc_calling_db_objects",inParam);
+            result = (String)outParam.get("result");
+            Utility.print("dbResult:\n"+result);
+            jsonObject = new JSONObject(result);
+            status = jsonObject.getString("status");
+            if(!status.equalsIgnoreCase("0")){
+                return;
+            }
+            jsonRequestData = jsonObject.getJSONObject("response_data");
+            fileExist      = jsonRequestData.getString("reportExist");
+            Utility.print("fileExist:"+fileExist);
+            if(fileExist.equalsIgnoreCase("Y")){
+                EquifaxAPILog equifaxAPILog = userService.findEquifaxDetailByTokenId(tokenID);
+                fileBlob = new SerialBlob(equifaxAPILog.getReport_data());
+                inputStream = fileBlob.getBinaryStream();
+                response = userService.startFileDownload(response,inputStream,fileName);
+                Utility.print("Report Found in system..!");
+                userService.saveJsonLog(channel,"res",action,"HTTP status:"+response.getStatus(),userName,module);
+            }else{
+                int paraCode = 31,filecount=0;
+                Blob blobData = null;
+                byte[] fileContents;
+                ByteArrayOutputStream fileOutput = new ByteArrayOutputStream();
+                byte[] fileBuffer = new byte[1024];
+
+                SysParaMst sysParaMst =userService.getParaVal("9999","9999",paraCode);
+                jsonReportMetaData = jsonRequestData.getJSONObject("reportMetaData");
+                String requestData = jsonReportMetaData.toString(),reportAPIPath=null;
+                Utility.print("jsonReportMetaData:\n"+jsonReportMetaData);
+                /**generate report**/
+                try {
+                    if(sysParaMst==null){
+                        Utility.print("Parameter Code Missing:"+paraCode);
+                        userService.getJsonError("-99","Parameter not found",g_error_msg,"Equifax Report API path is missing with para-code("+paraCode+")","99",channel,action,requestData,userName,module,"U");
+                        return;
+                    }
+                    reportAPIPath = sysParaMst.getPara_value();
+                    if(reportAPIPath==null){
+                        Utility.print("Parameter Code Missing:"+paraCode);
+                        userService.getJsonError("-99","Parameter not found",g_error_msg,"Equifax Report API path is missing with para-code("+paraCode+")","99",channel,action,requestData,userName,module,"U");
+                        return;
+                    }
+                    try {
+                        Utility.print("Generating Report...");
+                        URL reportURL = new URL(reportAPIPath);
+                        HttpURLConnection conn = (HttpURLConnection)reportURL.openConnection();
+                        conn.setRequestMethod("POST");
+                        conn.addRequestProperty("content-Type", "application/json");
+                        conn.setDoOutput(true);
+                        OutputStream os = conn.getOutputStream();
+                        os.write(requestData.getBytes());
+                        os.flush();
+                        os.close();
+                        Utility.print("API Response Code  :"+conn.getResponseCode());
+                        fileStream = conn.getInputStream();
+                        /**updating report**/
+                        //file data download
+                        Utility.print("fileStream.available():"+fileStream.available());
+                        while ((filecount = fileStream.read(fileBuffer)) != -1) {
+                            fileOutput.write(fileBuffer, 0, filecount);
+                        }
+                        fileContents = fileOutput.toByteArray();
+                        blobData = new SerialBlob(fileContents);
+                        Utility.print("BLOB data size:"+blobData.length());
+                        if (blobData.length() > 0) {
+                            Utility.print("Report Generated Successfully..!");
+                            userService.updateEquifaxReport(blobData,tokenID);
+                        }
+                        //setting up response
+                        inputStream = new ByteArrayInputStream(fileContents);
+                        Utility.print("inputStream.available():"+inputStream.available());
+                        userService.startFileDownload(response,inputStream,fileName);
+                        /**end**/
+                    }catch (MalformedURLException e) {
+                        e.printStackTrace();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }catch (JSONException e){
+            userService.getJsonError("-99","Error-JSONException",g_error_msg,e.getMessage(),"99",channel,action,requestBody,userName,module,"E");
+            response.sendError(500);
+            e.printStackTrace();
+        }
+        catch (SerialException e) {
+            userService.getJsonError("-99","Error-JSONException",g_error_msg,e.getMessage(),"99",channel,action,requestBody,userName,module,"E");
+            response.sendError(500);
+            e.printStackTrace();
+        } catch (SQLException e) {
+            userService.getJsonError("-99","Error-JSONException",g_error_msg,e.getMessage(),"99",channel,action,requestBody,userName,module,"E");
+            response.sendError(500);
+            e.printStackTrace();
+        }
+    }
 }

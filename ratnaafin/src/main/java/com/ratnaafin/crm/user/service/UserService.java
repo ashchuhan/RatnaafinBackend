@@ -131,4 +131,12 @@ public interface UserService {
     List<ApiWebhookActivity> findWebhookProcess();
     void updateWebhookProcess(Long tranCd,String processStatus,String processResponse,String webhookFlag,String remarks);
     List<PerfiosReqResDtl> findPendingDocumentProcess();
+    //added on dt:13/07/2021
+    void updateTermsheetFile(Long tranCD,byte[] file,String userName);
+    void updateSanctionFile(Long tranCD, byte[] file, String userName);
+    //added on dt:15/07/2021
+    LeadSanctionDtl findSanctionDtlById(Long id);
+    LeadTermSheetDtl findTermSheetDtlById(Long id);
+    //added on: 22/07/2021
+    void updateEquifaxReport(Blob reportData, String tokenID);
 }
