@@ -42,6 +42,7 @@ import java.util.List;
 public class MiddlewareController {
     @Autowired
     private UserController userController;
+
     @Autowired
     private UserService userService;
 

@@ -59,81 +59,81 @@ public class Scheduler {
     @Autowired
     private UserService userService;
 
-//    @Autowired
-//    private UserController userController;
+    @Autowired
+    private UserController userController;
 
-    @Scheduled(fixedDelay = 120000, initialDelay = 300000)
-    public void fixedDelaySch() {
-//        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
-//        Date now = new Date();
-//        String strDate = sdf.format(now);
-        String JsonData = null;
-        JsonData = funcGetIntiatedRequestData();
-        if (JsonData != null) {
-            long leadId , serialNo, amountIn;
-            String enteredBy = null;
-            try {
-                BrowserContext context;
-                Playwright playwright = Playwright.create();
-                Browser browser = playwright.chromium().launch();
-                context = browser.newContext();
-                Page page = context.newPage();
-                JSONArray jsonArray = new JSONArray(JsonData);
-                for (int i = 0;i<jsonArray.length();i++){
-                    JSONObject jsonObject = jsonArray.getJSONObject(i);
-                    leadId = jsonObject.getLong("refID");
-                    serialNo = jsonObject.getLong("serialNo");
-                    enteredBy = jsonObject.getString("enteredBy");
-                    amountIn = jsonObject.getLong("amountIn");
-                    if (leadId > 0  && serialNo > 0){
-                        try {
-                            page.navigate("https://ratnaafin.aiplservices.com/middleware/lead/"+leadId+"?amountIn="+amountIn);
-                            page.waitForTimeout(29000);
-                            Page.PdfOptions options = new Page.PdfOptions();
-                            options.format="A4";
-                            options.displayHeaderFooter = true;
-                            options.printBackground = true;
-                            //options.withDisplayHeaderFooter(true);
-                            //options.withPath(Paths.get("page.pdf"));
-                            String fileName = CAM_FILE_PATH+userService.getuniqueId()+"_Lead_"+leadId+"_CAM.pdf";
-                            File filepath = new File(fileName);
-                            FileInputStream fileInputStream = null;
-                            //options.setPath(Paths.get(filepath.getAbsolutePath()));
-                            //options.withPath(Paths.get(filepath.getAbsolutePath()));
-                            //System.out.println("File Path:"+filepath.getAbsolutePath());
-                            options.path = Paths.get(filepath.getAbsolutePath());
-                            page.pdf(options);
-                            fileInputStream = new FileInputStream(filepath);
-                            Blob blob = null;
-                            Utility utility = new Utility();
-                            blob = utility.getBlobData(fileInputStream);
-                            if (blob != null) {
-                                userService.updateCAMStatus(serialNo,leadId,blob,new Date(),"S",enteredBy);
-                            }else {
-                                userService.updateCAMStatus(serialNo,leadId,blob,new Date(),"F",enteredBy);
-                            }
-                            if(filepath.delete()) {
-                                System.out.println("File Deleted");
-                            }else{
-                                filepath.deleteOnExit();
-                                System.out.println("File not Deleted");
-                            }
-                        }catch (Exception e){
-                            System.out.println("Internal Exception"+e.getMessage()+" cause "+e.getCause().getMessage());
-                        }
-                    }
-                }
-                page.close();
-                context.close();
-            }catch (JSONException e){
-                System.out.println("JSONException"+e.getMessage());
-            }catch (Exception e){
-                System.out.println("Outer Exception"+e.getMessage()+" cause "+e.getCause().getMessage());
-            }
-            //System.out.println("End task" + new Date());
-        }
-        System.gc();
-    }
+//    @Scheduled(fixedDelay = 120000, initialDelay = 300000)
+//    public void fixedDelaySch() {
+////        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+////        Date now = new Date();
+////        String strDate = sdf.format(now);
+//        String JsonData = null;
+//        JsonData = funcGetIntiatedRequestData();
+//        if (JsonData != null) {
+//            long leadId , serialNo, amountIn;
+//            String enteredBy = null;
+//            try {
+//                BrowserContext context;
+//                Playwright playwright = Playwright.create();
+//                Browser browser = playwright.chromium().launch();
+//                context = browser.newContext();
+//                Page page = context.newPage();
+//                JSONArray jsonArray = new JSONArray(JsonData);
+//                for (int i = 0;i<jsonArray.length();i++){
+//                    JSONObject jsonObject = jsonArray.getJSONObject(i);
+//                    leadId = jsonObject.getLong("refID");
+//                    serialNo = jsonObject.getLong("serialNo");
+//                    enteredBy = jsonObject.getString("enteredBy");
+//                    amountIn = jsonObject.getLong("amountIn");
+//                    if (leadId > 0  && serialNo > 0){
+//                        try {
+//                            page.navigate("https://ratnaafin.aiplservices.com/middleware/lead/"+leadId+"?amountIn="+amountIn);
+//                            page.waitForTimeout(29000);
+//                            Page.PdfOptions options = new Page.PdfOptions();
+//                            options.format="A4";
+//                            options.displayHeaderFooter = true;
+//                            options.printBackground = true;
+//                            //options.withDisplayHeaderFooter(true);
+//                            //options.withPath(Paths.get("page.pdf"));
+//                            String fileName = CAM_FILE_PATH+userService.getuniqueId()+"_Lead_"+leadId+"_CAM.pdf";
+//                            File filepath = new File(fileName);
+//                            FileInputStream fileInputStream = null;
+//                            //options.setPath(Paths.get(filepath.getAbsolutePath()));
+//                            //options.withPath(Paths.get(filepath.getAbsolutePath()));
+//                            //System.out.println("File Path:"+filepath.getAbsolutePath());
+//                            options.path = Paths.get(filepath.getAbsolutePath());
+//                            page.pdf(options);
+//                            fileInputStream = new FileInputStream(filepath);
+//                            Blob blob = null;
+//                            Utility utility = new Utility();
+//                            blob = utility.getBlobData(fileInputStream);
+//                            if (blob != null) {
+//                                userService.updateCAMStatus(serialNo,leadId,blob,new Date(),"S",enteredBy);
+//                            }else {
+//                                userService.updateCAMStatus(serialNo,leadId,blob,new Date(),"F",enteredBy);
+//                            }
+//                            if(filepath.delete()) {
+//                                System.out.println("File Deleted");
+//                            }else{
+//                                filepath.deleteOnExit();
+//                                System.out.println("File not Deleted");
+//                            }
+//                        }catch (Exception e){
+//                            System.out.println("Internal Exception"+e.getMessage()+" cause "+e.getCause().getMessage());
+//                        }
+//                    }
+//                }
+//                page.close();
+//                context.close();
+//            }catch (JSONException e){
+//                System.out.println("JSONException"+e.getMessage());
+//            }catch (Exception e){
+//                System.out.println("Outer Exception"+e.getMessage()+" cause "+e.getCause().getMessage());
+//            }
+//            //System.out.println("End task" + new Date());
+//        }
+//        System.gc();
+//    }
 
     public String funcGetIntiatedRequestData(){
         Connection connection = null;

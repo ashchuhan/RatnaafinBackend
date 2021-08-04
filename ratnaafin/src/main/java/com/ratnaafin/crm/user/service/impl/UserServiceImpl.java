@@ -1992,8 +1992,8 @@ public class UserServiceImpl implements UserService{
     }
 
     @Override
-    public void updateCAMStatus(long serialNo, long leadID, Blob camData, Date modifiedDate, String status,String enteredBy) {
-        crmcamDtlDao.updateCAMStatus(serialNo,leadID,camData,modifiedDate,status,enteredBy);
+    public void updateCAMStatus(long serialNo, long leadID, Blob camData, Date modifiedDate, String status, String enteredBy, String remarks) {
+        crmcamDtlDao.updateCAMStatus(serialNo,leadID,camData,modifiedDate,status,enteredBy,remarks);
     }
 
     @Override

@@ -15,6 +15,7 @@ public class CRMCAMDtlMapper {
             crmcamDtl.setStatus(crmcamDtlDto.getStatus());
             crmcamDtl.setLast_modified_date(crmcamDtlDto.getLast_modified_date());
             crmcamDtl.setCam_data(crmcamDtlDto.getCam_data());
+            crmcamDtl.setRemarks(crmcamDtlDto.getRemarks());
         }
         return crmcamDtl;
     }
@@ -26,6 +27,7 @@ public class CRMCAMDtlMapper {
             crmcamDtlDto.setStatus(crmcamDtl.getStatus());
             crmcamDtlDto.setLast_modified_date(crmcamDtl.getLast_modified_date());
             crmcamDtlDto.setCam_data(crmcamDtl.getCam_data());
+            crmcamDtlDto.setRemarks(crmcamDtl.getRemarks());
         }
         return crmcamDtlDto;
     }

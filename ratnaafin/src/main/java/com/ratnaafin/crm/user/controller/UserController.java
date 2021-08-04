@@ -9,12 +9,12 @@ import com.ratnaafin.crm.user.dto.URLConfigDto;
 import com.ratnaafin.crm.user.dto.UniqueIDDtlDto;
 import com.ratnaafin.crm.user.model.*;
 import com.ratnaafin.crm.user.service.UserService;
-import com.ratnaafin.crm.user.service.impl.UserServiceImpl;
 import org.apache.commons.codec.binary.Base64;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.XML;
+import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -58,6 +58,9 @@ public class UserController {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private AmqpTemplate amqpTemplate;
 
 //    private final String WEBHOOK_DOMAIN = "https://digix.aiplsolution.in/ratnaafin/los/webhooks";
     private String g_error_msg = "Something went wrong please try again.";
@@ -181,6 +184,31 @@ public class UserController {
                 break;
             default:
                 result = funcCallAPITwo(g_application, module, action, event, requestData, userName, "", "", "");
+                if ((module + "/" + action + "/" + event).equals("lead/cam/generate")) {
+                    long leadID = 0,serialNo = 0;
+                    String enteredBy = null;
+                    try {
+                        JSONObject jsonObject = new JSONObject(result);
+                        if (jsonObject.getString("status").equals("0")) {
+                            leadID = jsonObject.getJSONObject("response_data").getLong("refID");
+                            serialNo = jsonObject.getJSONObject("response_data").getLong("serialNo");
+                            enteredBy = jsonObject.getJSONObject("response_data").getString("enteredBy");
+                            if (leadID > 0 && serialNo > 0) {
+                                amqpTemplate.convertAndSend("AgentForCAMRequest", "CAMRequest", result);
+                            }
+                        }
+                    }catch (JSONException e){
+                        if (leadID > 0 && serialNo > 0) {
+                            userService.updateCAMStatus(serialNo,leadID,null,new Date(),"F",enteredBy,"Failed:"+e.getMessage());
+                            return userService.getJsonError("-99", g_err_title, g_err_msg, e.getMessage(), "99", "W", action,requestData, userName, "lead", "E");
+                        }
+                    }catch (Exception e){
+                        if (leadID > 0 && serialNo > 0) {
+                            userService.updateCAMStatus(serialNo,leadID,null,new Date(),"F",enteredBy,"Failed:"+e.getMessage());
+                            return userService.getJsonError("-99", g_err_title, g_err_msg, e.getMessage(), "99", "W", action,requestData, userName, "lead", "E");
+                        }
+                    }
+                }
         }
         return result;
     }

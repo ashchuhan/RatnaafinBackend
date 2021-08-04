@@ -32,6 +32,9 @@ public class CRMCAMDtl {
     @Column(name = "LAST_MACHINE_NM")
     private String last_machine_nm;
 
+    @Column(name = "REMARKS")
+    private String remarks;
+
     public String getLast_entered_by() {
         return last_entered_by;
     }
@@ -82,5 +85,17 @@ public class CRMCAMDtl {
 
     public void setLast_modified_date(Date last_modified_date) {
         this.last_modified_date = last_modified_date;
+    }
+
+    public void setLast_machine_nm(String last_machine_nm) {
+        this.last_machine_nm = last_machine_nm;
+    }
+
+    public String getRemarks() {
+        return remarks;
+    }
+
+    public void setRemarks(String remarks) {
+        this.remarks = remarks;
     }
 }

@@ -103,7 +103,7 @@ public interface UserService {
     String deleteUploadedDocumentByLeadID(Long lead_id,Long doc_id);
     HttpServletResponse startFileDownload(HttpServletResponse response, InputStream is,String fileName);
     boolean isMiddlewareRequest(String signature);
-    void updateCAMStatus(long serialNo, long leadID, Blob camData, Date modifiedDate, String status,String enteredBy);
+    void updateCAMStatus(long serialNo, long leadID, Blob camData, Date modifiedDate, String status, String enteredBy, String remarks);
     CRMCAMDtlDto getCAMData(long leadID,long serialNo);
     List<CrmMiscMst> findByCategory(String categoryCode);
     String getGstNumberById(Long refId);

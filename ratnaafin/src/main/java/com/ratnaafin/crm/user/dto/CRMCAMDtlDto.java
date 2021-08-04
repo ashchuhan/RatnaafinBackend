@@ -9,6 +9,7 @@ public class CRMCAMDtlDto {
     private String status;
     private Blob cam_data;
     private Date last_modified_date;
+    private String remarks;
 
     public long getTran_cd() {
         return tran_cd;
@@ -48,5 +49,13 @@ public class CRMCAMDtlDto {
 
     public void setLast_modified_date(Date last_modified_date) {
         this.last_modified_date = last_modified_date;
+    }
+
+    public String getRemarks() {
+        return remarks;
+    }
+
+    public void setRemarks(String remarks) {
+        this.remarks = remarks;
     }
 }

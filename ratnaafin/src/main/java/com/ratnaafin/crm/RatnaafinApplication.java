@@ -7,9 +7,11 @@ import com.ratnaafin.crm.user.service.UserService;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -61,6 +63,11 @@ public class RatnaafinApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(RatnaafinApplication.class, args);
 		filedir = Utility.createDirectory("CAM");
+	}
+
+	@Bean
+	public Jackson2JsonMessageConverter converter() {
+		return new Jackson2JsonMessageConverter();
 	}
 
 	@RequestMapping(method = RequestMethod.GET, value = "/misc/{category}", produces = {"application/json", "application/json"})

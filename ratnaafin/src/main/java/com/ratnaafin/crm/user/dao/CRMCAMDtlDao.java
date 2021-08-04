@@ -13,6 +13,6 @@ public interface CRMCAMDtlDao extends CrudRepository<CRMCAMDtl,Long> {
     CRMCAMDtl getCRMCAMData(long leadID,long serialNo);
 
     @Modifying
-    @Query("update Crm_lead_cam_dtl u set u.last_machine_nm='SERVER',u.last_entered_by = ?6,u.status = ?5, u.last_modified_date = ?4, u.cam_data = ?3 where u.tran_cd = ?2 and u.sr_cd = ?1")
-    void updateCAMStatus(long serialNo, long leadID, Blob camData, Date modifiedDate, String Status,String enteredBy);
+    @Query("update Crm_lead_cam_dtl u set u.last_machine_nm='SERVER',u.remarks = ?7,u.last_entered_by = ?6,u.status = ?5, u.last_modified_date = ?4, u.cam_data = ?3 where u.tran_cd = ?2 and u.sr_cd = ?1")
+    void updateCAMStatus(long serialNo, long leadID, Blob camData, Date modifiedDate, String Status, String enteredBy, String remarks);
 }

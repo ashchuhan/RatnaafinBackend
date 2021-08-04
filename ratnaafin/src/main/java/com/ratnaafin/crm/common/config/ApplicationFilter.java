@@ -23,14 +23,14 @@ public class ApplicationFilter implements Filter {
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
         HttpServletRequest req = (HttpServletRequest) request;
         HttpServletResponse res = (HttpServletResponse) response;
-        logger.info("Logging Request  : "+req.getMethod() +" "+req.getRequestURI()+" "+new Date());
+        //logger.info("Logging Request  : "+req.getMethod() +" "+req.getRequestURI()+" "+new Date());
         if ("POST".equalsIgnoreCase(req.getMethod()) && "/".equalsIgnoreCase(req.getRequestURI())) {
             res.sendRedirect("/");
-            logger.info("Logging Response  : "+req.getRequestURI()+" "+res.getStatus()+" "+new Date());
+            //logger.info("Logging Response  : "+req.getRequestURI()+" "+res.getStatus()+" "+new Date());
             return;
         }
         chain.doFilter(request, response);
-        logger.info("Logging Response  : "+req.getRequestURI()+" "+res.getStatus()+" "+new Date());
+        //logger.info("Logging Response  : "+req.getRequestURI()+" "+res.getStatus()+" "+new Date());
     }
 
     @Override
