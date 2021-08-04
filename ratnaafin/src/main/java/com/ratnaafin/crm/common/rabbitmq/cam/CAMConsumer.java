@@ -34,10 +34,7 @@ public class CAMConsumer {
     @RabbitHandler
     public void camRequestQueueMessage(String message) throws Exception {
         try{
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            System.out.println("Message received time:"+sdf.format(new Date()));
             JSONObject jsonObject = new JSONObject(message);
-            int i = 5/0;
             if (jsonObject.getString("status").equals("0")){
                 long leadID,serialNo,amountIn;
                 String enteredBy = null;

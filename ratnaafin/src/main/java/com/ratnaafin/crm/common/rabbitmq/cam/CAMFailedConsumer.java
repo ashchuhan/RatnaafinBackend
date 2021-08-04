@@ -18,8 +18,6 @@ public class CAMFailedConsumer {
 
     @RabbitListener(queues = "CAMFailedRequestQueue")
     public void camFailedRequestQueue(String message){
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        System.out.println("Message sent time:"+sdf.format(new Date()));
         amqpTemplate.convertAndSend("AgentForDelayCAMRequest", "CAMDelayRequest", message, new MessagePostProcessor() {
             @Override
             public Message postProcessMessage(Message message) throws AmqpException {
