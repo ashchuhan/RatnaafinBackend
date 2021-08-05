@@ -118,7 +118,7 @@ public interface UserService {
 
     //EquifaxAPILogDao-modified and added on: 11/06/2021
     List<EquifaxAPILog> findEquifaxPendingLinkRecord();
-    void updateEqfxOTPLinkStatus(String token_id, String status,String remarks,String shortedURL);
+    void updateEqfxOTPLinkStatus(String token_id,String status,String linkStatus,String errorDesc,String shortedURL,String remarks);
     EquifaxAPILog findEquifaxDetailByTokenId(String tokenID);
     void updateEquifaxAPILog(String token_id,String req_status, String res_status,String res_data,String errorCode,String errorDesc);
     //url shortner method
@@ -139,4 +139,6 @@ public interface UserService {
     LeadTermSheetDtl findTermSheetDtlById(Long id);
     //added on: 22/07/2021
     void updateEquifaxReport(Blob reportData, String tokenID);
+    //added on: 04/08/2021
+    void deleteEquifaxDetailByTokenId(String tokenID);
 }

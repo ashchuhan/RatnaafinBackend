@@ -32,6 +32,3 @@ out/
 
 ### VS Code ###
 .vscode/
-
-#applicaton props
-/src/main/resources/application.properties

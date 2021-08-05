@@ -2,6 +2,7 @@ package com.ratnaafin.crm.user.controller;
 
 import com.ratnaafin.crm.common.exception.TokenNotValidException;
 import com.ratnaafin.crm.common.service.Utility;
+import com.ratnaafin.crm.common.service.rabbitMQ.Equifax.EquifaxRabbitMQConfig;
 import com.ratnaafin.crm.user.dto.CRMAppDto;
 import com.ratnaafin.crm.user.dto.CRMCAMDtlDto;
 import com.ratnaafin.crm.user.dto.PerfiosReqResDto;
@@ -96,7 +97,7 @@ public class UserController {
                 result = "null";
                 break;
             default:
-                result = funcCallAPIThree(g_application, module, moduleCategory, action, event, requestData, userName,
+               result = funcCallAPIThree(g_application, module, moduleCategory, action, event, requestData, userName,
                         subEvent, subEvent1, "");
         }
         return result;
@@ -108,7 +109,7 @@ public class UserController {
                                       @PathVariable(name = "moduleCategory") String moduleCategory, @PathVariable(name = "action") String action,
                                       @PathVariable(name = "event") String event, @PathVariable(name = "subevent") String subEvent,
                                       @RequestBody String requestData, OAuth2Authentication authentication) {
-        String userName = "null", result = null;
+        String userName = "null", result = null,caseStr=null;
         User user = (User) authentication.getUserAuthentication().getPrincipal();
         userName = user.getUsername();
         module = module.toLowerCase();
@@ -121,8 +122,37 @@ public class UserController {
                 result = "null";
                 break;
             default:
+                Utility.print("Request:"+module + "/" + moduleCategory + "/" + action + "/" + event + "/" + subEvent);
                 result = funcCallAPIThree(g_application, module, moduleCategory, action, event, requestData, userName,
                         subEvent, "", "");
+                caseStr = module + "/" + moduleCategory + "/" + action + "/" + event + "/" + subEvent;
+                if(caseStr.equalsIgnoreCase("lead/external/equifax/request/initiate")){
+                    String tokenID = null,requestFor = null,additionalRemarks=null;
+                    /*return equifaxProducer.sendLink(result,amqpTemplate,userService);*/
+                    try{
+                        HashMap inParam = new HashMap();
+                        JSONObject jsonObject = new JSONObject(result),jsonResponseData=null;
+                        if(jsonObject.getString("status").equals("0")){
+                            jsonResponseData = jsonObject.getJSONObject("response_data");
+                            tokenID = jsonResponseData.getString("tokenID");
+                            amqpTemplate.convertAndSend(EquifaxRabbitMQConfig.URL_SHORTENER_AGENT,EquifaxRabbitMQConfig.URL_SHORTENER_KEY,jsonResponseData.toString());
+                        }
+                    }catch (JSONException e){
+                        additionalRemarks = "Failed to call:"+EquifaxRabbitMQConfig.URL_SHORTENER_AGENT+"/"+e.getMessage();
+                        if(tokenID!=null){
+                            userService.updateEqfxOTPLinkStatus(tokenID,"F","F",g_error_msg,null,additionalRemarks);
+                        }
+                        e.printStackTrace();
+                        return userService.getJsonError("-99","Error:JSONException",g_error_msg,additionalRemarks,"99","W",action,
+                                requestData,userName,module,"E");
+                    }catch (Exception e){
+                        additionalRemarks = "Failed to call:"+EquifaxRabbitMQConfig.URL_SHORTENER_AGENT+"/"+e.getMessage();
+                        userService.updateEqfxOTPLinkStatus(tokenID,"F","F",g_error_msg,null,additionalRemarks);
+                        e.printStackTrace();
+                        return userService.getJsonError("-99","Error:Exception/amqpTemplate",g_error_msg,additionalRemarks,"99","W",action,
+                                requestData,userName,module,"E");
+                    }
+                }
         }
         return result;
     }
