@@ -27,7 +27,6 @@ public class URLShortenerConsumer {
        String requestFor = null;
        requestFor = jsonObject.getString("requestFor");
        Utility.print("urlShortener_QConsumer data1:"+requestFor);
-       Thread.sleep(20000);
 
        if(requestFor.equalsIgnoreCase("equifax")){
            String tokenID = null, shortURL=null,remarks=null,additionalRemarks=null;

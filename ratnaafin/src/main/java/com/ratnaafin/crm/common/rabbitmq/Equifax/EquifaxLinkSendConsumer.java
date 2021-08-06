@@ -29,7 +29,6 @@ public class EquifaxLinkSendConsumer {
     @RabbitListener(queues = EquifaxRabbitMQConfig.EQFX_LINK_SEND_Q)
     public void equifaxLinkSendQ_Consumer(String payload) throws Exception {
         Utility.print("equifaxLinkSendQ_Consumer");
-        Thread.sleep(20000);
         JSONObject jsonObject = new JSONObject(payload);
         String tokenID=null,link=null;
         try{
