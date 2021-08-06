@@ -1,4 +1,4 @@
-package com.ratnaafin.crm.common.service.rabbitMQ.Equifax;
+package com.ratnaafin.crm.common.rabbitmq.Equifax;
 
 import com.ratnaafin.crm.common.service.Utility;
 import com.ratnaafin.crm.user.model.EquifaxAPILog;
@@ -9,8 +9,6 @@ import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import java.util.HashMap;
 
 @Component
 public class URLShortenerConsumer {

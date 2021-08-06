@@ -1,8 +1,6 @@
-package com.ratnaafin.crm.common.service.rabbitMQ.Equifax;
+package com.ratnaafin.crm.common.rabbitmq.Equifax;
 
 import com.ratnaafin.crm.common.service.Utility;
-import com.ratnaafin.crm.common.service.rabbitMQ.Equifax.CustomException.ConfigurationErrorException;
-import com.ratnaafin.crm.common.service.rabbitMQ.Equifax.CustomException.ServiceErrorException;
 import com.ratnaafin.crm.user.dto.CRMAppDto;
 import com.ratnaafin.crm.user.dto.URLConfigDto;
 import com.ratnaafin.crm.user.model.EquifaxAPILog;
@@ -17,7 +15,6 @@ import org.springframework.stereotype.Component;
 import javax.net.ssl.HttpsURLConnection;
 import java.io.OutputStream;
 import java.net.URL;
-import java.util.Date;
 import java.util.HashMap;
 
 @Component

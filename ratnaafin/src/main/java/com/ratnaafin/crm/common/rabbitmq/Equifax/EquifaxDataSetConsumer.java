@@ -1,4 +1,4 @@
-package com.ratnaafin.crm.common.service.rabbitMQ.Equifax;
+package com.ratnaafin.crm.common.rabbitmq.Equifax;
 
 import com.ratnaafin.crm.common.service.Utility;
 import com.ratnaafin.crm.user.service.UserService;

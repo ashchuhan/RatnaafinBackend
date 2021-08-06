@@ -2,7 +2,7 @@ package com.ratnaafin.crm.user.controller;
 
 import com.ratnaafin.crm.common.exception.TokenNotValidException;
 import com.ratnaafin.crm.common.service.Utility;
-import com.ratnaafin.crm.common.service.rabbitMQ.Equifax.EquifaxRabbitMQConfig;
+import com.ratnaafin.crm.common.rabbitmq.Equifax.EquifaxRabbitMQConfig;
 import com.ratnaafin.crm.user.dto.CRMAppDto;
 import com.ratnaafin.crm.user.dto.CRMCAMDtlDto;
 import com.ratnaafin.crm.user.dto.PerfiosReqResDto;
@@ -11,7 +11,6 @@ import com.ratnaafin.crm.user.dto.UniqueIDDtlDto;
 import com.ratnaafin.crm.user.model.*;
 import com.ratnaafin.crm.user.service.UserService;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.compress.utils.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;

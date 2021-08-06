@@ -1,7 +1,7 @@
 package com.ratnaafin.crm;
 
 import com.ratnaafin.crm.common.service.Utility;
-import com.ratnaafin.crm.common.service.rabbitMQ.Equifax.EquifaxRabbitMQConfig;
+import com.ratnaafin.crm.common.rabbitmq.Equifax.EquifaxRabbitMQConfig;
 import com.ratnaafin.crm.user.dto.*;
 import com.ratnaafin.crm.user.model.*;
 import com.ratnaafin.crm.user.service.UserService;
