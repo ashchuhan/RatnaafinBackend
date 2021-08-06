@@ -46,17 +46,17 @@ public class CAMConfiguration {
         return BindingBuilder.bind(queue()).to(exchange()).with("CAMRequest");
     }
 
-    public class ReceiverConfig {
-        @Bean
-        public CAMConsumer camConsumerOne() {
-            return new CAMConsumer();
-        }
-
-        @Bean
-        public CAMConsumer camConsumerTwo() {
-            return new CAMConsumer();
-        }
-    }
+//    public class ReceiverConfig {
+//        @Bean
+//        public CAMConsumer camConsumerOne() {
+//            return new CAMConsumer();
+//        }
+//
+//        @Bean
+//        public CAMConsumer camConsumerTwo() {
+//            return new CAMConsumer();
+//        }
+//    }
 
     @Bean
     public MessageConverter jsonMessageConverter() {

@@ -484,7 +484,7 @@ public class RatnaafinApplication {
 		if (ID == null) {
 			return userService.getJsonError("-99","Error!",g_error_msg,"InquiryID not Found.","99",channel,action,requestData,userName,module,"U");
 		}
-		if (sms == null){
+		if (sms == null){//re-pull
 			sms = "0";
 		}
 		//get inquery Details

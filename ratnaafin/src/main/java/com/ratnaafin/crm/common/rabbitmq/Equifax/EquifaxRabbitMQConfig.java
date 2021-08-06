@@ -86,5 +86,5 @@ public class EquifaxRabbitMQConfig {
     @Bean
     public Binding equifaxDelayBinding(){
         return BindingBuilder.bind(equifaxLinkSend_Q()).to(equifaxDelayExchange()).with(ROUTING_KEY3).noargs();
-    }*/
+    }*///re-pull
 }

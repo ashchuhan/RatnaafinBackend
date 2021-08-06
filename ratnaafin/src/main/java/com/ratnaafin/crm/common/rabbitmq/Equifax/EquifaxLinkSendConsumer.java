@@ -222,5 +222,5 @@ public class EquifaxLinkSendConsumer {
                 userService.updateEqfxOTPLinkStatus(tokenID,"F","F",remarks,null,additionalRemarks);
             }
         }
-    }
+    }//re-pull
 }

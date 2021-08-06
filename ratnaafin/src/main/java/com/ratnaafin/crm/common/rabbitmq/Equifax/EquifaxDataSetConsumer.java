@@ -27,6 +27,6 @@ public class EquifaxDataSetConsumer {
         if(outParam.containsKey("error")){
             dbError = (String)outParam.get("error");
             Utility.print("error:"+dbError);
-        }
+        }//re-pull
     }
 }

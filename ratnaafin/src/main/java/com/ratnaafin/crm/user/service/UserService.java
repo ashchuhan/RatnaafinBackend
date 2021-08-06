@@ -140,5 +140,5 @@ public interface UserService {
     //added on: 22/07/2021
     void updateEquifaxReport(Blob reportData, String tokenID);
     //added on: 04/08/2021
-    void deleteEquifaxDetailByTokenId(String tokenID);
+    void deleteEquifaxDetailByTokenId(String tokenID);//re-pull
 }

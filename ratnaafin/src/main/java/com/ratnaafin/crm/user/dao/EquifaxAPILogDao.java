@@ -30,6 +30,6 @@ public interface EquifaxAPILogDao extends CrudRepository<EquifaxAPILog,String> {
 
     @Modifying
     @Query("delete from Equifax_api_log_new u where u.token_id = ?1")
-    void deleteEquifaxDetailByTokenId(String tokenID);
+    void deleteEquifaxDetailByTokenId(String tokenID);//re-pull
 
 }

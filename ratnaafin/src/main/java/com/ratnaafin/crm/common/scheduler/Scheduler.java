@@ -234,7 +234,7 @@ public class Scheduler {
     //added by sanjay on date: 11/06/2021
     //change: sending sms/email and equifax consent link to customer
 //    @Scheduled(fixedDelay = 60000, initialDelay = 30000)
-    public  void equifaxConsentMessageScheduler(){
+    public  void equifaxConsentMessageScheduler(){//re-pull
         //utility.generateLog("info","start: equifaxConsentMessageScheduler",logger);
         String shortURL=null;
         String objectName = this.getClass().getSimpleName()+".java",errorFlag=null,errorMessage=null,errorRemarks=null;

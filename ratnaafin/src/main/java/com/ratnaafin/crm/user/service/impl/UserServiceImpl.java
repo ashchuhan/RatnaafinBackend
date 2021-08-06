@@ -2243,7 +2243,7 @@ public class UserServiceImpl implements UserService{
             return "0";
         }
     }
-
+    //re-pull
     public String getDateFormattedString(String dateStr/*date string*/,String pattern/*String return pattern*/) {
         //keep note: dateStr is always in format: Sat Jan 16 2021 15:26:49 GMT+0530
         String extractPattern = "EEE MMM dd yyyy";
