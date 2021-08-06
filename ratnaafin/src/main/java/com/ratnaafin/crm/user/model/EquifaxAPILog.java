@@ -96,6 +96,10 @@ public class EquifaxAPILog {
     @Column(name = "REPORT_DATA")
     private Blob report_data;
 
+    @Column(name = "REMARKS")
+    private String remarks;
+
+
     public String getToken_id() {
         return token_id;
     }
@@ -319,4 +323,12 @@ public class EquifaxAPILog {
     public void setReport_data(Blob report_data) {
         this.report_data = report_data;
     }
+
+    public String getRemarks() {
+        return remarks;
+    }
+
+    public void setRemarks(String remarks) {
+        this.remarks = remarks;
+    }//re-pull
 }

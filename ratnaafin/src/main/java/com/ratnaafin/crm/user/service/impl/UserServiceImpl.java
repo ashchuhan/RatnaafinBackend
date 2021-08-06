@@ -2070,8 +2070,8 @@ public class UserServiceImpl implements UserService{
     }
 
     @Override
-    public void updateEqfxOTPLinkStatus(String token_id, String status,String remarks,String shortedURL){
-        equifaxAPILogDao.updateEqfxOTPLinkStatus(token_id, status,remarks,shortedURL,new Date());
+    public void updateEqfxOTPLinkStatus(String token_id, String status,String linkStatus,String errorDesc,String shortedURL,String remarks){
+        equifaxAPILogDao.updateEqfxOTPLinkStatus(token_id, status,linkStatus,errorDesc,shortedURL,remarks,new Date());
     }
 
     @Override
@@ -2243,7 +2243,7 @@ public class UserServiceImpl implements UserService{
             return "0";
         }
     }
-
+    //re-pull
     public String getDateFormattedString(String dateStr/*date string*/,String pattern/*String return pattern*/) {
         //keep note: dateStr is always in format: Sat Jan 16 2021 15:26:49 GMT+0530
         String extractPattern = "EEE MMM dd yyyy";
@@ -2320,5 +2320,9 @@ public class UserServiceImpl implements UserService{
 
     public void updateEquifaxReport(Blob reportData, String tokenID){
         equifaxAPILogDao.updateEquifaxReport(reportData,new Date(),tokenID);
+    }
+
+    public void deleteEquifaxDetailByTokenId(String tokenID){
+        equifaxAPILogDao.deleteEquifaxDetailByTokenId(tokenID);
     }
 }

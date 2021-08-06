@@ -1,17 +1,17 @@
 package com.ratnaafin.crm;
 
 import com.ratnaafin.crm.common.service.Utility;
+import com.ratnaafin.crm.common.rabbitmq.Equifax.EquifaxRabbitMQConfig;
 import com.ratnaafin.crm.user.dto.*;
 import com.ratnaafin.crm.user.model.*;
 import com.ratnaafin.crm.user.service.UserService;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.Bean;
 import org.springframework.http.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -54,20 +54,17 @@ public class RatnaafinApplication {
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 
+	@Autowired
+	private AmqpTemplate amqpTemplate;
+
 	public Map<String,SseEmitter> emitters = new HashMap<>();
 
 	private String g_error_msg = "Something went wrong please try again.";
 
 	public static File filedir = null;
-
 	public static void main(String[] args) {
 		SpringApplication.run(RatnaafinApplication.class, args);
 		filedir = Utility.createDirectory("CAM");
-	}
-
-	@Bean
-	public Jackson2JsonMessageConverter converter() {
-		return new Jackson2JsonMessageConverter();
 	}
 
 	@RequestMapping(method = RequestMethod.GET, value = "/misc/{category}", produces = {"application/json", "application/json"})
@@ -157,7 +154,7 @@ public class RatnaafinApplication {
 		switch (application+"/"+module+"/"+action)
 		{
 			case "null":
-				result = "null";
+				result = "NULL";
 				break;
 			default:
 				result = funcCallAPIOne(application,module,action,requestData,"","","","");
@@ -487,7 +484,7 @@ public class RatnaafinApplication {
 		if (ID == null) {
 			return userService.getJsonError("-99","Error!",g_error_msg,"InquiryID not Found.","99",channel,action,requestData,userName,module,"U");
 		}
-		if (sms == null){
+		if (sms == null){//re-pull
 			sms = "0";
 		}
 		//get inquery Details
@@ -4626,7 +4623,8 @@ public class RatnaafinApplication {
 		postData = equifaxAPILog.getReq_data();
 		try{
 			String responseStatus = null;
-			Utility.print("initiating Request...");
+			Utility.print("initiating Request..."+new Date());
+
 			URL postURL = new URL(sendURL);
 			HttpsURLConnection conn = (HttpsURLConnection) postURL.openConnection();
 			conn.setRequestMethod("POST");
@@ -4637,6 +4635,7 @@ public class RatnaafinApplication {
 			os.flush();
 			os.close();
 			result = Utility.getURLResponse(conn);
+			Utility.print("Request completed..."+new Date());
 			Utility.print("result:"+result);
 			Utility.print("API Calling succeed");
 			Utility.print("Response code:" + conn.getResponseCode());
@@ -4681,9 +4680,10 @@ public class RatnaafinApplication {
 				responseStatus = "F";
 				response = userService.getJsonError("-99","Equifax Response code:"+conn.getResponseCode(),"Failed to fetch data from vendor",result,"99",channel,action,requestData,userName,module,"U");
 			}
-			Utility.print("Updating records");
 			userService.updateEquifaxAPILog(tokenID,requestStatus,responseStatus,result,errorCode,errorDesc);
-			Utility.print("Updated successfully");
+			if(responseStatus.equalsIgnoreCase("S")){
+				 amqpTemplate.convertAndSend(EquifaxRabbitMQConfig.EQFX_DATA_SET_AGENT,EquifaxRabbitMQConfig.EQFX_DATA_SET_KEY,tokenID);
+			}
 			return response;
 		}catch (MalformedURLException e) {
 			return userService.getJsonError("-99","Error-MalformedURLException",g_error_msg,e.getMessage(),"99",channel,action,requestData,userName,module,"E");

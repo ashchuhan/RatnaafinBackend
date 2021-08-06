@@ -21,10 +21,15 @@ public interface EquifaxAPILogDao extends CrudRepository<EquifaxAPILog,String> {
     void updateEquifaxAPILog(String token_id,String req_status,String res_status, String res_data, Date modifyDate,String errorCode, String errorDesc);
 
     @Modifying
-    @Query("update Equifax_api_log_new u set u.link_sent_status = ?2, u.error_desc = ?3, u.shorted_link = ?4, u.link_sent_date = ?5 where u.token_id = ?1" )
-    void updateEqfxOTPLinkStatus(String token_id, String status, String remarks,String shortedURL,Date sentDate);
+    @Query("update Equifax_api_log_new u set u.status = ?2, u.link_sent_status = ?3, u.error_desc = ?4, u.shorted_link = ?5, u.remarks = ?6,u.link_sent_date = ?7 where u.token_id = ?1" )
+    void updateEqfxOTPLinkStatus(String tokenID, String status,String linkStatus, String errorDesc,String shortedURL,String remarks,Date sentDate);
 
     @Modifying
     @Query("update Equifax_api_log_new u set u.report_data = ?1, u.last_modified_date = ?2 where u.token_id = ?3")
     void updateEquifaxReport(Blob reportData, Date modifyDate, String tokenID);
+
+    @Modifying
+    @Query("delete from Equifax_api_log_new u where u.token_id = ?1")
+    void deleteEquifaxDetailByTokenId(String tokenID);//re-pull
+
 }

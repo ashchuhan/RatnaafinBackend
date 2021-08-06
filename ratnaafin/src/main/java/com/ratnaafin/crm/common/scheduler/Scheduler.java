@@ -233,8 +233,8 @@ public class Scheduler {
 
     //added by sanjay on date: 11/06/2021
     //change: sending sms/email and equifax consent link to customer
-    @Scheduled(fixedDelay = 60000, initialDelay = 30000)
-    public  void equifaxConsentMessageScheduler(){
+//    @Scheduled(fixedDelay = 60000, initialDelay = 30000)
+    public  void equifaxConsentMessageScheduler(){//re-pull
         //utility.generateLog("info","start: equifaxConsentMessageScheduler",logger);
         String shortURL=null;
         String objectName = this.getClass().getSimpleName()+".java",errorFlag=null,errorMessage=null,errorRemarks=null;
@@ -256,11 +256,13 @@ public class Scheduler {
             apiActive = sysParaMst_sms_link_active.getPara_value();
             apiActive = apiActive == null ? "N" : apiActive;
         }
+        //test
+        apiActive = "N";
         Utility.print("(equifax)total rows:"+rows.size());
         Utility.print("(equifax)link send api flag:"+apiActive);
 
         if(rows.size()>=0 && apiActive.equals("Y")){
-            String apiURLRtl=null,apiURLComm=null,apiKeyRtl=null,apiKeyComm=null,templateIDRtl=null,templateIDComm=null;
+            String apiURLRtl=null,apiURLComm=null,apiKeyRtl=null,apiKeyComm=null,templateIDRtl=null,templateIDComm=null,additionalRemarks=null;
             int configCDRtl = 46,configCDComm = 48;
 
             sysParaMst_link_detail_rtl = userService.getParaVal("9999","9999",26);
@@ -300,8 +302,8 @@ public class Scheduler {
                     if(shortURL==null||shortURL.trim().isEmpty()){
                         shortURL = userService.getShortURL(tokenID,internalLink);
                         if(shortURL.equals("0")){
-                            //Update "otp_verification_dtl"
-                            userService.updateEqfxOTPLinkStatus(tokenID,"F","Error in Service:URL shortener",null);
+                            additionalRemarks = "Error in Service:URL shortener";
+                            userService.updateEqfxOTPLinkStatus(tokenID,"F","F",additionalRemarks,null,additionalRemarks);
                             continue;
                         }
                     }
@@ -317,8 +319,8 @@ public class Scheduler {
                             inParam.put("remarks",errorRemarks);
                             inParam.put("obj_name",objectName);
                             inParam.put("error_flag",errorFlag);
-                            //Update "otp_verification_dtl"
-                            userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg,shortURL);
+                            additionalRemarks = errorMessage;
+                            userService.updateEqfxOTPLinkStatus(tokenID,"F","F",g_error_msg,shortURL,additionalRemarks);
                             outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                             continue;
                         }
@@ -330,8 +332,8 @@ public class Scheduler {
                             inParam.put("remarks",errorRemarks);
                             inParam.put("obj_name",objectName);
                             inParam.put("error_flag",errorFlag);
-                            //Update "otp_verification_dtl"
-                            userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg,shortURL);
+                            additionalRemarks = errorMessage;
+                            userService.updateEqfxOTPLinkStatus(tokenID,"F","F",g_error_msg,shortURL,additionalRemarks);
                             outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                             continue;
                         }
@@ -343,13 +345,13 @@ public class Scheduler {
                             inParam.put("remarks",errorRemarks);
                             inParam.put("obj_name",objectName);
                             inParam.put("error_flag",errorFlag);
-                            //Update "otp_verification_dtl"
-                            userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg,shortURL);
+                            additionalRemarks = errorMessage;
+                            userService.updateEqfxOTPLinkStatus(tokenID,"F","F",g_error_msg,shortURL,additionalRemarks);
                             outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                             continue;
                         }
                         try{
-                            String apiResult = null;
+                            String apiResult = null,status=null;
                             int httpStatus=0;
                             URL obj = new URL(apiURLRtl);
                             HttpsURLConnection conn = (HttpsURLConnection) obj.openConnection();
@@ -371,7 +373,7 @@ public class Scheduler {
                             //get response body of api request
                             apiResult = Utility.getURLResponse(conn);
                             httpStatus = conn.getResponseCode();
-                            Utility.print("API response:"+apiResult);
+                            Utility.print("API response>:"+apiResult);
                             String responseStatus = null,responseMessage=null,responseTransactionID=null;
                             JSONObject jsonObject = null;
                             if(httpStatus==conn.HTTP_OK){
@@ -391,13 +393,15 @@ public class Scheduler {
                                     }
                                     //end: read key values
                                     if (responseStatus.equals("200") && responseMessage.equalsIgnoreCase("success")){
+                                        status = "P";
                                         linkSentStatus = "S";
                                     }else{
+                                        status = "F";
                                         linkSentStatus = "F";
                                         remarks = responseMessage;
                                     }
-                                    //Update "otp_verification_dtl"
-                                    userService.updateEqfxOTPLinkStatus(tokenID,linkSentStatus,remarks,shortURL);
+                                    additionalRemarks = remarks;
+                                    userService.updateEqfxOTPLinkStatus(tokenID,status,linkSentStatus,remarks,shortURL,additionalRemarks);
                                 }catch (JSONException e){
                                     errorFlag = "E";
                                     errorMessage = "JSONException:"+e.getMessage();
@@ -406,8 +410,8 @@ public class Scheduler {
                                     inParam.put("remarks",errorRemarks);
                                     inParam.put("obj_name",objectName);
                                     inParam.put("error_flag",errorFlag);
-                                    //Update "otp_verification_dtl"
-                                    userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg,shortURL);
+                                    additionalRemarks = errorMessage;
+                                    userService.updateEqfxOTPLinkStatus(tokenID,"F","F",g_error_msg,shortURL,additionalRemarks);
                                     outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                                     e.printStackTrace();
                                     continue;
@@ -423,11 +427,12 @@ public class Scheduler {
                                         responseMessage = jsonObject.getString("message");
                                     }
                                 }catch (Exception e){
-                                    responseMessage = "";
+                                    additionalRemarks = e.getMessage()+"/"+apiResult.substring(0,3999);
+                                    responseMessage = g_error_msg;
                                 }
                                 //Update "otp_verification_dtl"
-                                remarks = responseMessage==null||responseMessage.isEmpty()?apiResult.substring(0,3999):responseMessage;
-                                userService.updateEqfxOTPLinkStatus(tokenID,"F",remarks,shortURL);
+                                remarks = responseMessage;
+                                userService.updateEqfxOTPLinkStatus(tokenID,"F","F",remarks,shortURL,additionalRemarks);
                             }
                             //insert api log
                             inParam = new HashMap();
@@ -447,8 +452,8 @@ public class Scheduler {
                             inParam.put("remarks",errorRemarks);
                             inParam.put("obj_name",objectName);
                             inParam.put("error_flag",errorFlag);
-                            //Update "otp_verification_dtl"
-                            userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg,shortURL);
+                            additionalRemarks = errorMessage;
+                            userService.updateEqfxOTPLinkStatus(tokenID,"F","F",g_error_msg,shortURL,additionalRemarks);
                             outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                             e.printStackTrace();
                             continue;
@@ -461,8 +466,8 @@ public class Scheduler {
                         inParam.put("remarks",errorRemarks);
                         inParam.put("obj_name",objectName);
                         inParam.put("error_flag",errorFlag);
-                        //Update "otp_verification_dtl"
-                        userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg,shortURL);
+                        additionalRemarks = errorMessage;
+                        userService.updateEqfxOTPLinkStatus(tokenID,"F","F",g_error_msg,shortURL,additionalRemarks);
                         outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                         continue;
                     }
@@ -475,7 +480,7 @@ public class Scheduler {
                         shortURL = userService.getShortURL(tokenID,internalLink);
                         if(shortURL.equals("0")){
                             //Update "otp_verification_dtl"
-                            userService.updateEqfxOTPLinkStatus(tokenID,"F","Error in Service:URL shortener",null);
+                            userService.updateEqfxOTPLinkStatus(tokenID,"F","F","Error in Service:URL shortener",null,additionalRemarks);
                             continue;
                         }
                     }
@@ -490,8 +495,8 @@ public class Scheduler {
                             inParam.put("remarks",errorRemarks);
                             inParam.put("obj_name",objectName);
                             inParam.put("error_flag",errorFlag);
-                            //Update "otp_verification_dtl"
-                            userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg,shortURL);
+                            additionalRemarks = errorMessage;
+                            userService.updateEqfxOTPLinkStatus(tokenID,"F","F",g_error_msg,shortURL,additionalRemarks);
                             outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                             continue;
                         }
@@ -503,8 +508,8 @@ public class Scheduler {
                             inParam.put("remarks",errorRemarks);
                             inParam.put("obj_name",objectName);
                             inParam.put("error_flag",errorFlag);
-                            //Update "otp_verification_dtl"
-                            userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg,shortURL);
+                            additionalRemarks = errorMessage;
+                            userService.updateEqfxOTPLinkStatus(tokenID,"F","F",g_error_msg,shortURL,additionalRemarks);
                             outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                             continue;
                         }
@@ -516,13 +521,13 @@ public class Scheduler {
                             inParam.put("remarks",errorRemarks);
                             inParam.put("obj_name",objectName);
                             inParam.put("error_flag",errorFlag);
-                            //Update "otp_verification_dtl"
-                            userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg,shortURL);
+                            additionalRemarks = errorMessage;
+                            userService.updateEqfxOTPLinkStatus(tokenID,"F","F",g_error_msg,shortURL,additionalRemarks);
                             outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                             continue;
                         }
                         try{
-                            String apiResult = null;
+                            String apiResult = null,status=null;
                             int httpStatus=0;
                             URL obj = new URL(apiURLComm);
                             HttpsURLConnection conn = (HttpsURLConnection) obj.openConnection();
@@ -565,13 +570,15 @@ public class Scheduler {
                                     //end: read key values
 
                                     if (responseStatus.equals("200") && responseMessage.equalsIgnoreCase("success")){
+                                        status = "P";
                                         linkSentStatus = "S";
                                     }else{
+                                        status = "F";
                                         linkSentStatus = "F";
                                         remarks = responseMessage;
                                     }
-                                    //Update "otp_verification_dtl"
-                                    userService.updateEqfxOTPLinkStatus(tokenID,linkSentStatus,remarks,shortURL);
+                                    additionalRemarks = remarks;
+                                    userService.updateEqfxOTPLinkStatus(tokenID,status,linkSentStatus,remarks,shortURL,additionalRemarks);
                                 }catch (JSONException e){
                                     errorFlag = "E";
                                     errorMessage = "JSONException:"+e.getMessage();
@@ -580,8 +587,8 @@ public class Scheduler {
                                     inParam.put("remarks",errorRemarks);
                                     inParam.put("obj_name",objectName);
                                     inParam.put("error_flag",errorFlag);
-                                    //Update "otp_verification_dtl"
-                                    userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg,shortURL);
+                                    additionalRemarks = errorMessage;
+                                    userService.updateEqfxOTPLinkStatus(tokenID,"F","F",g_error_msg,shortURL,additionalRemarks);
                                     outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                                     e.printStackTrace();
                                     continue;
@@ -597,11 +604,12 @@ public class Scheduler {
                                         responseMessage = jsonObject.getString("message");
                                     }
                                 }catch (Exception e){
-                                    responseMessage = "";
+                                    additionalRemarks = e.getMessage()+"/"+apiResult.substring(0,3999);
+                                    responseMessage = g_error_msg;
                                 }
                                 //Update "otp_verification_dtl"
-                                remarks = responseMessage==null||responseMessage.isEmpty()?apiResult.substring(0,3999):responseMessage;
-                                userService.updateEqfxOTPLinkStatus(tokenID,"F",remarks,shortURL);
+                                remarks = responseMessage;
+                                userService.updateEqfxOTPLinkStatus(tokenID,"F","F",remarks,shortURL,additionalRemarks);
                             }
                             //insert api log
                             inParam = new HashMap();
@@ -622,8 +630,8 @@ public class Scheduler {
                             inParam.put("remarks",errorRemarks);
                             inParam.put("obj_name",objectName);
                             inParam.put("error_flag",errorFlag);
-                            //Update "otp_verification_dtl"
-                            userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg,shortURL);
+                            additionalRemarks = errorMessage;
+                            userService.updateEqfxOTPLinkStatus(tokenID,"F","F",g_error_msg,shortURL,additionalRemarks);
                             outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                             e.printStackTrace();
                             continue;
@@ -636,8 +644,8 @@ public class Scheduler {
                         inParam.put("remarks",errorRemarks);
                         inParam.put("obj_name",objectName);
                         inParam.put("error_flag",errorFlag);
-                        //Update "otp_verification_dtl"
-                        userService.updateEqfxOTPLinkStatus(tokenID,"F",g_error_msg,shortURL);
+                        additionalRemarks = errorMessage;
+                        userService.updateEqfxOTPLinkStatus(tokenID,"F","F",g_error_msg,shortURL,additionalRemarks);
                         outParam    =   userService.callingDBObject("procedure","proc_insert_error_log",inParam);
                         continue;
                     }
