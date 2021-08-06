@@ -4682,7 +4682,7 @@ public class RatnaafinApplication {
 			}
 			userService.updateEquifaxAPILog(tokenID,requestStatus,responseStatus,result,errorCode,errorDesc);
 			if(responseStatus.equalsIgnoreCase("S")){
-				amqpTemplate.convertAndSend(EquifaxRabbitMQConfig.EQFX_DATA_SET_AGENT,EquifaxRabbitMQConfig.EQFX_DATA_SET_KEY,tokenID);
+				 amqpTemplate.convertAndSend(EquifaxRabbitMQConfig.EQFX_DATA_SET_AGENT,EquifaxRabbitMQConfig.EQFX_DATA_SET_KEY,tokenID);
 			}
 			return response;
 		}catch (MalformedURLException e) {
